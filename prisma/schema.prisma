@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -32,7 +32,7 @@ model Transaction {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  amount    Float
+  amount    Decimal
   type      String   // 'income', 'expense'
   category  String
   description String?
@@ -49,8 +49,8 @@ model Budget {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category  String
-  limit     Float
-  spent     Float    @default(0)
+  limit     Decimal
+  spent     Decimal  @default(0)
   month     Int      // Month (1-12)
   year      Int      // Year
   createdAt DateTime @default(now())
@@ -65,8 +65,8 @@ model SavingsGoal {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String
-  targetAmount Float
-  currentAmount Float   @default(0)
+  targetAmount Decimal
+  currentAmount Decimal @default(0)
   targetDate DateTime
   category  String?
   createdAt DateTime @default(now())
@@ -80,7 +80,7 @@ model Bill {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String
-  amount    Float
+  amount    Decimal
   dueDate   Int      // Day of month (1-31)
   frequency String   // 'monthly', 'yearly'
   paid      Boolean  @default(false)
