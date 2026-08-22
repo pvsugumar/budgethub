@@ -1,9 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-
 export default function GoalsPage() {
-  const [goals, setGoals] = useState([]);
 
   return (
     <div>

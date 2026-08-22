@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Configuration, PlaidApi, PlaidEnvironments } from 'plaid';
+import { Configuration, PlaidApi, PlaidEnvironments, CountryCode } from 'plaid';
 
 const configuration = new Configuration({
   basePath: PlaidEnvironments[process.env.PLAID_ENV || 'sandbox'],
@@ -22,8 +22,7 @@ export async function POST(request: NextRequest) {
       user: { client_user_id: userId },
       client_name: 'BudgetHub',
       language: 'en',
-      products: ['auth', 'transactions'],
-      country_codes: ['US'],
+      country_codes: [CountryCode.Us],
     });
 
     return NextResponse.json({

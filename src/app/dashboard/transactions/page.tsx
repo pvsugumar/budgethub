@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 export default function TransactionsPage() {
-  const [transactions, setTransactions] = useState([]);
+  const [_transactions, _setTransactions] = useState([]);
   const [filter, setFilter] = useState('all');
 
   return (

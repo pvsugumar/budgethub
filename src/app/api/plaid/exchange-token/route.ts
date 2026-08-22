@@ -16,7 +16,7 @@ const client = new PlaidApi(configuration);
 // Exchange public token for access token
 export async function POST(request: NextRequest) {
   try {
-    const { public_token, userId } = await request.json();
+    const { public_token } = await request.json();
 
     const response = await client.itemPublicTokenExchange({
       public_token,

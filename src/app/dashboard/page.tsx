@@ -2,20 +2,12 @@
 
 import { useEffect, useState } from 'react';
 
-interface DashboardData {
-  totalIncome: number;
-  totalExpenses: number;
-  balance: number;
-  recentTransactions: any[];
-}
-
 export default function DashboardPage() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [_loading, _setLoading] = useState(true);
 
   useEffect(() => {
     // TODO: Fetch dashboard data from API
-    setLoading(false);
+    _setLoading(false);
   }, []);
 
   return (

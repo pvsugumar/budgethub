@@ -1,9 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-
 export default function BudgetsPage() {
-  const [budgets, setBudgets] = useState([]);
 
   return (
     <div>
