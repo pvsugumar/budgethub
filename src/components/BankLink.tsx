@@ -43,11 +43,11 @@ export default function BankLink({ userId, onSuccess }: BankLinkProps) {
     // Add timeout for slow connections
     const timeout = setTimeout(() => {
       if (!plaidReady) {
-        console.warn('[Plaid] Script loading timed out');
-        setError('Bank linking service is taking too long to load.');
+        console.warn('[Plaid] Script loading timed out after 30 seconds');
+        setError('Bank linking service is taking too long to load. Please check your internet connection.');
         setLoading(false);
       }
-    }, 8000);
+    }, 30000);
 
     document.body.appendChild(script);
 
