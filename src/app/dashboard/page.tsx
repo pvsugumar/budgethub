@@ -3,14 +3,14 @@
 import { useEffect, useState } from 'react';
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState({
+  const [stats] = useState({
     totalIncome: 0,
     totalExpenses: 0,
     netBalance: 0,
   });
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [budgets, setBudgets] = useState<any[]>([]);
-  const [savingsGoals, setSavingsGoals] = useState<any[]>([]);
+  const [transactions] = useState<any[]>([]);
+  const [budgets] = useState<any[]>([]);
+  const [savingsGoals] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
