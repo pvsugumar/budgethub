@@ -3,11 +3,28 @@
 import { useEffect, useState } from 'react';
 
 export default function DashboardPage() {
-  const [_loading, _setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalIncome: 0,
+    totalExpenses: 0,
+    netBalance: 0,
+  });
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [budgets, setBudgets] = useState<any[]>([]);
+  const [savingsGoals, setSavingsGoals] = useState<any[]>([]);
 
   useEffect(() => {
-    // TODO: Fetch dashboard data from API
-    _setLoading(false);
+    const fetchData = async () => {
+      try {
+        setLoading(false);
+        // TODO: Fetch from /api/dashboard endpoint
+        // For now, show empty state
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error);
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
   return (
@@ -15,28 +32,28 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-2">Welcome back! Here's your financial overview.</p>
+        <p className="text-gray-600 mt-2">Your financial overview</p>
       </div>
 
       {/* Key Metrics */}
       <div className="grid md:grid-cols-3 gap-6 mb-10">
         <StatCard
           title="Total Income"
-          amount="$5,200.00"
+          amount={`$${stats.totalIncome.toFixed(2)}`}
           icon="📈"
           color="green"
           subtitle="This month"
         />
         <StatCard
           title="Total Expenses"
-          amount="$2,840.00"
+          amount={`$${stats.totalExpenses.toFixed(2)}`}
           icon="📉"
           color="red"
           subtitle="This month"
         />
         <StatCard
           title="Net Balance"
-          amount="$2,360.00"
+          amount={`$${stats.netBalance.toFixed(2)}`}
           icon="💰"
           color="blue"
           subtitle="Available"
@@ -58,54 +75,57 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="p-6">
-              <div className="space-y-4">
-                {[
-                  { name: 'Starbucks Coffee', amount: '-$5.50', date: 'Today', icon: '☕' },
-                  { name: 'Salary Deposit', amount: '+$3,200.00', date: 'Yesterday', icon: '💼' },
-                  { name: 'Netflix Subscription', amount: '-$15.99', date: '2 days ago', icon: '🎬' },
-                ].map((tx, i) => (
-                  <div key={i} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-2xl">{tx.icon}</span>
-                      <div>
-                        <p className="font-semibold text-gray-900">{tx.name}</p>
-                        <p className="text-xs text-gray-500">{tx.date}</p>
+              {transactions.length > 0 ? (
+                <div className="space-y-4">
+                  {transactions.map((tx) => (
+                    <div key={tx.id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+                      <div className="flex items-center space-x-3">
+                        <span className="text-2xl">{tx.icon}</span>
+                        <div>
+                          <p className="font-semibold text-gray-900">{tx.name}</p>
+                          <p className="text-xs text-gray-500">{tx.date}</p>
+                        </div>
                       </div>
+                      <p className={`font-semibold ${tx.amount >= 0 ? 'text-green-600' : 'text-gray-900'}`}>
+                        {tx.amount >= 0 ? '+' : ''} ${tx.amount.toFixed(2)}
+                      </p>
                     </div>
-                    <p className={`font-semibold ${tx.amount.startsWith('+') ? 'text-green-600' : 'text-gray-900'}`}>
-                      {tx.amount}
-                    </p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No transactions yet</p>
+                  <p className="text-sm text-gray-400 mt-1">Link your bank account to get started</p>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Spending by Category */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h2 className="text-xl font-bold text-gray-900 mb-6">Spending by Category</h2>
-            <div className="space-y-4">
-              {[
-                { category: 'Food & Dining', amount: '$580', percent: 35, color: 'bg-orange-500' },
-                { category: 'Shopping', amount: '$420', percent: 25, color: 'bg-pink-500' },
-                { category: 'Entertainment', amount: '$340', percent: 20, color: 'bg-purple-500' },
-                { category: 'Transport', amount: '$200', percent: 12, color: 'bg-blue-500' },
-                { category: 'Utilities', amount: '$120', percent: 8, color: 'bg-green-500' },
-              ].map((item, i) => (
-                <div key={i}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-gray-900">{item.category}</span>
-                    <span className="text-sm font-semibold text-gray-600">{item.amount}</span>
+            {budgets.length > 0 ? (
+              <div className="space-y-4">
+                {budgets.map((budget) => (
+                  <div key={budget.id}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-gray-900">{budget.category}</span>
+                      <span className="text-sm font-semibold text-gray-600">${budget.spent.toFixed(2)} / ${budget.limit.toFixed(2)}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full"
+                        style={{ width: `${Math.min((budget.spent / budget.limit) * 100, 100)}%` }}
+                      ></div>
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className={`${item.color} h-2 rounded-full`}
-                      style={{ width: `${item.percent}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No budget data yet</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -127,51 +147,39 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Budget Status */}
+          {/* Bank Connection Status */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Budget Status</h2>
-            <div className="space-y-4">
-              {[
-                { name: 'Monthly Budget', used: 62, color: 'bg-yellow-500' },
-                { name: 'Spending Limit', used: 45, color: 'bg-green-500' },
-              ].map((item, i) => (
-                <div key={i}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-gray-900">{item.name}</span>
-                    <span className="text-sm font-bold text-gray-900">{item.used}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div
-                      className={`${item.color} h-3 rounded-full`}
-                      style={{ width: `${item.used}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Bank Connection</h2>
+            <div className="text-center py-6">
+              <p className="text-4xl mb-2">🏦</p>
+              <p className="text-gray-600 font-medium">Not Connected</p>
+              <p className="text-sm text-gray-500 mt-2">Link your bank account to sync transactions automatically</p>
+              <a href="/dashboard/settings" className="inline-block mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
+                Link Bank Account
+              </a>
             </div>
           </div>
 
           {/* Savings Goals */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Savings Goals</h2>
-            <div className="space-y-4">
-              {[
-                { goal: 'Emergency Fund', current: 3500, target: 5000 },
-                { goal: 'Vacation', current: 1200, target: 2500 },
-              ].map((item, i) => (
-                <div key={i}>
-                  <p className="font-medium text-gray-900 mb-2">{item.goal}</p>
-                  <p className="text-xs text-gray-600 mb-2">${item.current.toLocaleString()} / ${item.target.toLocaleString()}</p>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full"
-                      style={{ width: `${(item.current / item.target) * 100}%` }}
-                    ></div>
+          {savingsGoals.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Savings Goals</h2>
+              <div className="space-y-4">
+                {savingsGoals.map((goal) => (
+                  <div key={goal.id}>
+                    <p className="font-medium text-gray-900 mb-2">{goal.name}</p>
+                    <p className="text-xs text-gray-600 mb-2">${goal.current.toFixed(2)} / ${goal.target.toFixed(2)}</p>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full"
+                        style={{ width: `${Math.min((goal.current / goal.target) * 100, 100)}%` }}
+                      ></div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
