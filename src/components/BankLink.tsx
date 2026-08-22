@@ -50,14 +50,18 @@ export default function BankLink({ userId, onSuccess }: BankLinkProps) {
   // Initialize Plaid Link
   const { open, ready } = usePlaidLink({
     token: linkToken,
-    onSuccess: async (publicToken: string) => {
+    onSuccess: async (public_token: string | null) => {
       try {
+        if (!public_token) {
+          setError('Failed to get authorization token');
+          return;
+        }
         console.log('[Plaid] User authenticated, exchanging token');
         setLoading(true);
         const exchangeResponse = await fetch('/api/plaid/exchange-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ public_token: publicToken, userId }),
+          body: JSON.stringify({ public_token, userId }),
         });
 
         const exchangeData = await exchangeResponse.json();
