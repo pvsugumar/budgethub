@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 
 export default function DashboardPage() {
-  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalIncome: 0,
     totalExpenses: 0,
@@ -16,12 +15,10 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(false);
         // TODO: Fetch from /api/dashboard endpoint
         // For now, show empty state
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
-        setLoading(false);
       }
     };
     fetchData();
