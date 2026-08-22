@@ -21,41 +21,64 @@ export default function BankLink({ userId, onSuccess }: BankLinkProps) {
   const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
-    // Load Plaid Link script
-    const script = document.createElement('script');
-    script.src = 'https://cdn.plaid.com/link/v3/stable/link-initialize.js';
-    script.async = true;
-    
-    script.onload = () => {
-      console.log('[Plaid] Script loaded successfully');
-      setPlaidReady(true);
-      setError('');
-      setLoading(false);
+    // Try loading Plaid Link script from multiple CDN endpoints
+    const cdnUrls = [
+      'https://cdn.plaid.com/link/v3/stable/link-initialize.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/plaid/3.0.0/link-initialize.min.js',
+    ];
+
+    let scriptLoaded = false;
+    let urlIndex = 0;
+
+    const loadScript = () => {
+      if (urlIndex >= cdnUrls.length) {
+        console.error('[Plaid] All CDN URLs failed to load');
+        setError('Unable to load bank linking from all sources. This may be due to network restrictions.');
+        setLoading(false);
+        return;
+      }
+
+      const script = document.createElement('script');
+      const url = cdnUrls[urlIndex];
+      script.src = url;
+      script.async = true;
+      
+      script.onload = () => {
+        scriptLoaded = true;
+        console.log('[Plaid] Script loaded successfully from:', url);
+        setPlaidReady(true);
+        setError('');
+        setLoading(false);
+      };
+      
+      script.onerror = () => {
+        console.warn(`[Plaid] Failed to load from ${url}, trying next URL...`);
+        urlIndex++;
+        // Try next URL
+        if (script.parentNode) {
+          script.parentNode.removeChild(script);
+        }
+        setTimeout(loadScript, 500);
+      };
+      
+      document.body.appendChild(script);
     };
-    
-    script.onerror = (error) => {
-      console.error('[Plaid] Failed to load script:', error);
-      setError('Unable to load bank linking. This may be due to network restrictions or browser settings.');
-      setPlaidReady(false);
-      setLoading(false);
-    };
-    
+
     // Add timeout for slow connections
     const timeout = setTimeout(() => {
-      if (!plaidReady) {
+      if (!scriptLoaded) {
         console.warn('[Plaid] Script loading timed out after 30 seconds');
-        setError('Bank linking service is taking too long to load. Please check your internet connection.');
-        setLoading(false);
+        if (!plaidReady) {
+          setError('Bank linking service is taking too long to load. Please check your internet connection.');
+          setLoading(false);
+        }
       }
     }, 30000);
 
-    document.body.appendChild(script);
+    loadScript();
 
     return () => {
       clearTimeout(timeout);
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
     };
   }, [retryCount]);
 
@@ -68,7 +91,12 @@ export default function BankLink({ userId, onSuccess }: BankLinkProps) {
 
   const handleLinkClick = async () => {
     if (!window.Plaid) {
-      setError('Plaid Link is not loaded. Please try refreshing the page.');
+      setError('Plaid Link is not loaded yet. Please wait or try clicking "Retry Loading" button.');
+      return;
+    }
+
+    if (!plaidReady) {
+      setError('Bank linking is still loading. Please wait a moment and try again.');
       return;
     }
 
@@ -144,10 +172,10 @@ export default function BankLink({ userId, onSuccess }: BankLinkProps) {
       <div className="flex gap-2">
         <button
           onClick={handleLinkClick}
-          disabled={loading || !plaidReady}
-          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 cursor-pointer"
+          disabled={loading}
+          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
-          {!plaidReady ? '⏳ Loading Plaid...' : loading ? 'Connecting...' : '🏦 Link Bank Account'}
+          {loading ? '⏳ Loading Plaid...' : plaidReady ? '🏦 Link Bank Account' : '🔄 Retry Loading'}
         </button>
         
         {error && (
