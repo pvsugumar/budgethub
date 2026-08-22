@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -11,7 +11,7 @@ export default function Sidebar() {
   const [userName, setUserName] = useState('');
 
   // Get user info from localStorage
-  React.useEffect(() => {
+  useEffect(() => {
     const name = localStorage.getItem('userName');
     const email = localStorage.getItem('userEmail');
     setUserName(name || email || 'User');
