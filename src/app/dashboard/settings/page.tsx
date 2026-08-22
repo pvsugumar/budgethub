@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import BankLink from '@/components/BankLink';
 
 export default function SettingsPage() {
+  const [userId, setUserId] = useState<string | null>(null);
   const [settings, setSettings] = useState({
     email: 'user@example.com',
     name: 'John Doe',
@@ -11,6 +12,22 @@ export default function SettingsPage() {
     theme: 'light',
     notifications: true,
   });
+
+  useEffect(() => {
+    // Get userId from localStorage (set during login)
+    const storedUserId = localStorage.getItem('userId');
+    const userEmail = localStorage.getItem('userEmail');
+    const userName = localStorage.getItem('userName');
+    
+    setUserId(storedUserId);
+    if (userEmail || userName) {
+      setSettings((prev) => ({
+        ...prev,
+        email: userEmail || prev.email,
+        name: userName || prev.name,
+      }));
+    }
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -123,10 +140,16 @@ export default function SettingsPage() {
         <p className="text-gray-600 mb-4">
           Link your bank account to automatically sync transactions and get real-time account balances.
         </p>
-        <BankLink userId="user-123" onSuccess={(data) => {
-          console.log('Bank linked:', data);
-          alert('✅ Bank account linked successfully!');
-        }} />
+        {userId ? (
+          <BankLink userId={userId} onSuccess={(data) => {
+            console.log('Bank linked:', data);
+            alert('✅ Bank account linked successfully!');
+          }} />
+        ) : (
+          <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 p-4 rounded">
+            <p>⚠️ Unable to load user information. Please log out and log in again.</p>
+          </div>
+        )}
       </div>
 
       {/* Danger Zone */}

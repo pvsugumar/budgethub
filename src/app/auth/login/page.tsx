@@ -29,6 +29,14 @@ export default function LoginPage() {
         return;
       }
 
+      const data = await res.json();
+      // Store user ID in localStorage for now (temporary until NextAuth.js)
+      if (data.user?.id) {
+        localStorage.setItem('userId', data.user.id);
+        localStorage.setItem('userEmail', data.user.email);
+        localStorage.setItem('userName', data.user.name);
+      }
+
       router.push('/dashboard');
     } catch (err) {
       setError('An error occurred. Please try again.');
