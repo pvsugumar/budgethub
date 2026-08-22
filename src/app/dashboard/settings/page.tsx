@@ -1,10 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import BankLink from '@/components/BankLink';
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [settings, setSettings] = useState({
     email: 'user@example.com',
     name: 'John Doe',
@@ -19,6 +22,12 @@ export default function SettingsPage() {
     const userEmail = localStorage.getItem('userEmail');
     const userName = localStorage.getItem('userName');
     
+    if (!storedUserId) {
+      // Not logged in, redirect to login
+      router.push('/auth/login');
+      return;
+    }
+    
     setUserId(storedUserId);
     if (userEmail || userName) {
       setSettings((prev) => ({
@@ -27,7 +36,8 @@ export default function SettingsPage() {
         name: userName || prev.name,
       }));
     }
-  }, []);
+    setIsLoading(false);
+  }, [router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -43,6 +53,14 @@ export default function SettingsPage() {
     // TODO: Save settings to database
     alert('Settings saved!');
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="text-gray-600">Loading settings...</div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -140,16 +158,10 @@ export default function SettingsPage() {
         <p className="text-gray-600 mb-4">
           Link your bank account to automatically sync transactions and get real-time account balances.
         </p>
-        {userId ? (
-          <BankLink userId={userId} onSuccess={(data) => {
-            console.log('Bank linked:', data);
-            alert('✅ Bank account linked successfully!');
-          }} />
-        ) : (
-          <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 p-4 rounded">
-            <p>⚠️ Unable to load user information. Please log out and log in again.</p>
-          </div>
-        )}
+        <BankLink userId={userId || ''} onSuccess={(data) => {
+          console.log('Bank linked:', data);
+          alert('✅ Bank account linked successfully!');
+        }} />
       </div>
 
       {/* Danger Zone */}

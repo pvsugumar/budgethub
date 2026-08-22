@@ -37,7 +37,15 @@ export default function SignupPage() {
         return;
       }
 
-      router.push('/auth/login?message=Signup successful. Please login.');
+      const data = await res.json();
+      // Store user ID in localStorage (set during signup)
+      if (data.user?.id) {
+        localStorage.setItem('userId', data.user.id);
+        localStorage.setItem('userEmail', data.user.email);
+        localStorage.setItem('userName', name);
+      }
+
+      router.push('/dashboard');
     } catch (err) {
       setError('An error occurred. Please try again.');
     } finally {
