@@ -14,8 +14,11 @@ interface Transaction {
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ amount: '', category: '', description: '' });
   const [form, setForm] = useState({
     type: 'expense',
     amount: '',
@@ -71,8 +74,34 @@ export default function TransactionsPage() {
   };
 
   const filteredTransactions = transactions.filter(
-    (t) => filter === 'all' || t.type === filter
+    (t) =>
+      (filter === 'all' || t.type === filter) &&
+      (search === '' ||
+        t.category.toLowerCase().includes(search.toLowerCase()) ||
+        (t.description || '').toLowerCase().includes(search.toLowerCase()))
   );
+
+  const startEdit = (t: Transaction) => {
+    setEditingId(t.id);
+    setEditForm({ amount: t.amount, category: t.category, description: t.description || '' });
+  };
+
+  const handleUpdate = async (id: string) => {
+    const res = await fetch(`/api/transactions/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editForm),
+    });
+    if (res.ok && userId) {
+      setEditingId(null);
+      loadTransactions(userId);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
+    if (res.ok && userId) loadTransactions(userId);
+  };
 
   return (
     <div>
@@ -154,7 +183,7 @@ export default function TransactionsPage() {
 
       <div className="card">
         <h2 className="text-xl font-bold mb-4">Transaction History</h2>
-        <div className="mb-4 flex gap-2">
+        <div className="mb-4 flex flex-wrap gap-2 items-center">
           <button
             onClick={() => setFilter('all')}
             className={`px-4 py-2 rounded ${
@@ -185,6 +214,13 @@ export default function TransactionsPage() {
           >
             Expenses
           </button>
+          <input
+            type="text"
+            placeholder="Search category or description..."
+            className="input flex-1 min-w-[200px]"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
 
         {loading ? (
@@ -195,26 +231,65 @@ export default function TransactionsPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {filteredTransactions.map((t) => (
-              <div
-                key={t.id}
-                className="flex justify-between items-center p-3 border border-gray-200 rounded-lg"
-              >
-                <div>
-                  <p className="font-semibold">{t.description || t.category}</p>
-                  <p className="text-sm text-gray-600">
-                    {t.category} • {new Date(t.date).toLocaleDateString()}
-                  </p>
+            {filteredTransactions.map((t) =>
+              editingId === t.id ? (
+                <div key={t.id} className="p-3 border-2 border-blue-300 rounded-lg space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="input"
+                      value={editForm.amount}
+                      onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
+                    />
+                    <input
+                      type="text"
+                      className="input"
+                      value={editForm.category}
+                      onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    className="input"
+                    placeholder="Description"
+                    value={editForm.description}
+                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                  />
+                  <div className="flex gap-2">
+                    <button onClick={() => handleUpdate(t.id)} className="btn btn-primary text-sm">Save</button>
+                    <button onClick={() => setEditingId(null)} className="btn btn-secondary text-sm">Cancel</button>
+                  </div>
                 </div>
-                <p
-                  className={`font-bold ${
-                    t.type === 'income' ? 'text-green-600' : 'text-red-600'
-                  }`}
+              ) : (
+                <div
+                  key={t.id}
+                  className="flex justify-between items-center p-3 border border-gray-200 rounded-lg"
                 >
-                  {t.type === 'income' ? '+' : '-'}${Number(t.amount).toFixed(2)}
-                </p>
-              </div>
-            ))}
+                  <div>
+                    <p className="font-semibold">{t.description || t.category}</p>
+                    <p className="text-sm text-gray-600">
+                      {t.category} • {new Date(t.date).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <p
+                      className={`font-bold ${
+                        t.type === 'income' ? 'text-green-600' : 'text-red-600'
+                      }`}
+                    >
+                      {t.type === 'income' ? '+' : '-'}${Number(t.amount).toFixed(2)}
+                    </p>
+                    <button onClick={() => startEdit(t)} className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                      Edit
+                    </button>
+                    <button onClick={() => handleDelete(t.id)} className="text-red-500 hover:text-red-700 text-sm font-medium">
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              )
+            )}
           </div>
         )}
       </div>

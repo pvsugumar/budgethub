@@ -1,6 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import {
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend,
+} from 'recharts';
 
 interface Transaction {
   amount: string;
@@ -8,6 +12,8 @@ interface Transaction {
   category: string;
   date: string;
 }
+
+const COLORS = ['#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
 export default function SpendingPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -75,7 +81,6 @@ export default function SpendingPage() {
       .reduce((sum, t) => sum + Number(t.amount), 0);
     return { month: d.toLocaleString('default', { month: 'short' }), value: total };
   });
-  const maxTrend = Math.max(...monthlyTrend.map((m) => m.value), 1);
 
   if (loading) {
     return <div className="text-center py-12 text-gray-600">Loading spending data...</div>;
@@ -111,43 +116,65 @@ export default function SpendingPage() {
         {categoryBreakdown.length === 0 ? (
           <p className="text-gray-600 text-center py-8">No expenses recorded this month yet.</p>
         ) : (
-          <div className="space-y-4">
-            {categoryBreakdown.map((item) => (
-              <div key={item.category} className="flex items-center justify-between">
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-700">{item.category}</p>
-                  <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                    <div
-                      className="bg-blue-600 h-2 rounded-full"
-                      style={{ width: `${item.percent}%` }}
+          <div className="grid md:grid-cols-2 gap-6 items-center">
+            <div style={{ width: '100%', height: 280 }}>
+              <ResponsiveContainer>
+                <PieChart>
+                  <Pie
+                    data={categoryBreakdown}
+                    dataKey="amount"
+                    nameKey="category"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    label={(entry) => `${entry.category}`}
+                  >
+                    {categoryBreakdown.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="space-y-4">
+              {categoryBreakdown.map((item, index) => (
+                <div key={item.category} className="flex items-center justify-between">
+                  <div className="flex-1 flex items-center gap-2">
+                    <span
+                      className="w-3 h-3 rounded-full inline-block"
+                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
                     />
+                    <p className="font-semibold text-gray-700">{item.category}</p>
+                  </div>
+                  <div className="text-right ml-4">
+                    <p className="font-bold text-gray-900">${item.amount.toFixed(2)}</p>
+                    <p className="text-gray-500 text-sm">{item.percent.toFixed(1)}%</p>
                   </div>
                 </div>
-                <div className="text-right ml-4">
-                  <p className="font-bold text-gray-900">${item.amount.toFixed(2)}</p>
-                  <p className="text-gray-500 text-sm">{item.percent.toFixed(1)}%</p>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow">
         <h2 className="text-2xl font-bold mb-4">Monthly Trend</h2>
-        <div className="h-64 flex items-end justify-around bg-gray-50 p-4 rounded">
-          {monthlyTrend.map((data) => (
-            <div key={data.month} className="flex flex-col items-center">
-              <div
-                className="bg-blue-500 rounded-t w-10"
-                style={{ height: `${(data.value / maxTrend) * 200}px` }}
-              />
-              <p className="text-sm text-gray-600 mt-2">{data.month}</p>
-            </div>
-          ))}
+        <div style={{ width: '100%', height: 280 }}>
+          <ResponsiveContainer>
+            <BarChart data={monthlyTrend}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis />
+              <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+              <Legend />
+              <Bar dataKey="value" name="Expenses" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>
   );
 }
+
 

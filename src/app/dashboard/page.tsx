@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+} from 'recharts';
 
 interface Transaction {
   id: string;
@@ -70,6 +73,20 @@ export default function DashboardPage() {
 
   const recentTransactions = transactions.slice(0, 5);
 
+  // Last 6 months income vs expense trend
+  const monthlyTrend = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+    const monthTxns = transactions.filter((t) => {
+      const td = new Date(t.date);
+      return td.getMonth() === d.getMonth() && td.getFullYear() === d.getFullYear();
+    });
+    return {
+      month: d.toLocaleString('default', { month: 'short' }),
+      income: monthTxns.filter((t) => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0),
+      expenses: monthTxns.filter((t) => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0),
+    };
+  });
+
   if (loading) {
     return (
       <div className="p-8 text-center text-gray-600">Loading dashboard...</div>
@@ -113,6 +130,24 @@ export default function DashboardPage() {
       <div className="grid md:grid-cols-3 gap-8">
         {/* Left Column - Transactions & Spending */}
         <div className="md:col-span-2 space-y-8">
+          {/* Income vs Expense Trend */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Income vs Expenses (6 Months)</h2>
+            <div style={{ width: '100%', height: 260 }}>
+              <ResponsiveContainer>
+                <LineChart data={monthlyTrend}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                  <Legend />
+                  <Line type="monotone" dataKey="income" stroke="#10b981" strokeWidth={2} name="Income" />
+                  <Line type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} name="Expenses" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
           {/* Recent Transactions */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">

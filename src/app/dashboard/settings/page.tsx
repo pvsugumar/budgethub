@@ -29,13 +29,16 @@ export default function SettingsPage() {
     }
     
     setUserId(storedUserId);
-    if (userEmail || userName) {
-      setSettings((prev) => ({
-        ...prev,
-        email: userEmail || prev.email,
-        name: userName || prev.name,
-      }));
-    }
+    const savedPrefs = localStorage.getItem('userPrefs');
+    const prefs = savedPrefs ? JSON.parse(savedPrefs) : {};
+    setSettings((prev) => ({
+      ...prev,
+      email: userEmail || prev.email,
+      name: userName || prev.name,
+      currency: prefs.currency || prev.currency,
+      theme: prefs.theme || prev.theme,
+      notifications: prefs.notifications ?? prev.notifications,
+    }));
     setIsLoading(false);
   }, [router]);
 
@@ -49,9 +52,31 @@ export default function SettingsPage() {
     });
   };
 
+  const [saving, setSaving] = useState(false);
+
   const handleSave = async () => {
-    // TODO: Save settings to database
-    alert('Settings saved!');
+    if (!userId) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/user', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, name: settings.name }),
+      });
+      if (res.ok) {
+        localStorage.setItem('userName', settings.name);
+        localStorage.setItem('userPrefs', JSON.stringify({
+          currency: settings.currency,
+          theme: settings.theme,
+          notifications: settings.notifications,
+        }));
+        alert('✅ Settings saved!');
+      } else {
+        alert('❌ Failed to save settings');
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (isLoading) {
@@ -142,8 +167,8 @@ export default function SettingsPage() {
 
           {/* Save Button */}
           <div className="flex gap-4">
-            <button type="button" onClick={handleSave} className="btn btn-primary">
-              Save Changes
+            <button type="button" onClick={handleSave} disabled={saving} className="btn btn-primary disabled:opacity-50">
+              {saving ? 'Saving...' : 'Save Changes'}
             </button>
             <button type="button" className="btn btn-secondary">
               Cancel

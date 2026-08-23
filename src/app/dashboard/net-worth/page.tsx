@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 interface BankAccount {
   id: string;
@@ -62,16 +63,28 @@ export default function NetWorthPage() {
           <p className="text-5xl font-bold text-green-600 mt-4">${netWorth.toFixed(2)}</p>
         </div>
 
-        {/* Assets vs Liabilities */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
-            <p className="text-gray-600 text-sm">Total Assets</p>
-            <p className="text-3xl font-bold text-green-600 mt-2">${totalAssets.toFixed(2)}</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow border-l-4 border-red-500">
-            <p className="text-gray-600 text-sm">Total Liabilities</p>
-            <p className="text-3xl font-bold text-red-600 mt-2">${totalLiabilities.toFixed(2)}</p>
-          </div>
+        {/* Assets vs Liabilities Donut */}
+        <div className="bg-white p-4 rounded-lg shadow border border-gray-200" style={{ height: 220 }}>
+          <ResponsiveContainer>
+            <PieChart>
+              <Pie
+                data={[
+                  { name: 'Assets', value: totalAssets },
+                  { name: 'Liabilities', value: totalLiabilities },
+                ]}
+                dataKey="value"
+                nameKey="name"
+                innerRadius={50}
+                outerRadius={80}
+                paddingAngle={2}
+              >
+                <Cell fill="#10b981" />
+                <Cell fill="#ef4444" />
+              </Pie>
+              <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
