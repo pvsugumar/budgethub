@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { CATEGORIES, categoryIcon } from '@/lib/categories';
 
 interface Budget {
   id: string;
@@ -21,25 +22,6 @@ const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
-
-function categoryIcon(category: string): string {
-  const c = category.toLowerCase();
-  if (c.includes('auto') || c.includes('transport') || c.includes('car') || c.includes('gas')) return '🚗';
-  if (c.includes('dining') || c.includes('restaurant') || c.includes('food')) return '🍽️';
-  if (c.includes('coffee')) return '☕';
-  if (c.includes('shop')) return '🛍️';
-  if (c.includes('travel')) return '✈️';
-  if (c.includes('entertain')) return '🎬';
-  if (c.includes('home') || c.includes('rent') || c.includes('mortgage')) return '🏠';
-  if (c.includes('bill') || c.includes('util')) return '📋';
-  if (c.includes('health') || c.includes('medical')) return '🩺';
-  if (c.includes('education') || c.includes('school')) return '🎓';
-  if (c.includes('gift') || c.includes('donat')) return '🎁';
-  if (c.includes('kid')) return '🧸';
-  if (c.includes('financ') || c.includes('fee') || c.includes('interest')) return '🏦';
-  if (c.includes('income') || c.includes('salary') || c.includes('earning') || c.includes('payroll')) return '💰';
-  return '♾️';
-}
 
 // Ring status: how much of the budget is remaining
 function ringColor(remaining: number, limit: number): string {
@@ -208,14 +190,17 @@ export default function BudgetsPage() {
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                <input
-                  type="text"
+                <select
                   className="input"
-                  placeholder="Food"
                   value={form.category}
                   onChange={(e) => setForm({ ...form, category: e.target.value })}
                   required
-                />
+                >
+                  <option value="" disabled>Select a category</option>
+                  {CATEGORIES.map((c) => (
+                    <option key={c.name} value={c.name}>{c.icon} {c.name}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Monthly Limit</label>

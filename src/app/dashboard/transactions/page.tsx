@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { CATEGORIES, categoryIcon } from '@/lib/categories';
 
 interface Transaction {
   id: string;
@@ -51,26 +52,6 @@ function getDateRange(option: string): { from: Date | null; to: Date | null } {
     default:
       return { from: null, to: null };
   }
-}
-
-function categoryIcon(category: string): string {
-  const c = category.toLowerCase();
-  if (c.includes('auto') || c.includes('transport') || c.includes('car') || c.includes('gas')) return '🚗';
-  if (c.includes('food') || c.includes('dining') || c.includes('restaurant')) return '🍔';
-  if (c.includes('coffee')) return '☕';
-  if (c.includes('shop')) return '🛍️';
-  if (c.includes('travel')) return '✈️';
-  if (c.includes('entertain')) return '🎬';
-  if (c.includes('home') || c.includes('rent') || c.includes('mortgage')) return '🏠';
-  if (c.includes('util')) return '💡';
-  if (c.includes('health') || c.includes('medical')) return '🩺';
-  if (c.includes('education') || c.includes('school')) return '🎓';
-  if (c.includes('gift') || c.includes('donat')) return '🎁';
-  if (c.includes('kid')) return '🧸';
-  if (c.includes('financ') || c.includes('fee') || c.includes('interest')) return '🏦';
-  if (c.includes('atm') || c.includes('withdraw') || c.includes('cash')) return '💼';
-  if (c.includes('income') || c.includes('salary') || c.includes('payroll')) return '💰';
-  return '🏷️';
 }
 
 export default function TransactionsPage() {
@@ -300,14 +281,17 @@ export default function TransactionsPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Category
               </label>
-              <input
-                type="text"
+              <select
                 className="input"
-                placeholder="Food"
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
                 required
-              />
+              >
+                <option value="" disabled>Select a category</option>
+                {CATEGORIES.map((c) => (
+                  <option key={c.name} value={c.name}>{c.icon} {c.name}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -471,13 +455,16 @@ export default function TransactionsPage() {
         {selectedIds.size > 0 && (
           <div className="mb-4 flex flex-wrap items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
             <span className="text-sm font-semibold text-blue-900">{selectedIds.size} selected</span>
-            <input
-              type="text"
-              placeholder="Set category..."
+            <select
               className="input w-auto"
               value={bulkCategory}
               onChange={(e) => setBulkCategory(e.target.value)}
-            />
+            >
+              <option value="">Set category...</option>
+              {CATEGORIES.map((c) => (
+                <option key={c.name} value={c.name}>{c.icon} {c.name}</option>
+              ))}
+            </select>
             <button onClick={handleBulkCategoryChange} className="btn btn-secondary text-sm">
               Apply Category
             </button>
@@ -534,13 +521,18 @@ export default function TransactionsPage() {
                             value={editForm.description}
                             onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                           />
-                          <input
-                            type="text"
+                          <select
                             className="input"
-                            placeholder="Category"
                             value={editForm.category}
                             onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
-                          />
+                          >
+                            {!CATEGORIES.some((c) => c.name === editForm.category) && editForm.category && (
+                              <option value={editForm.category}>{editForm.category}</option>
+                            )}
+                            {CATEGORIES.map((c) => (
+                              <option key={c.name} value={c.name}>{c.icon} {c.name}</option>
+                            ))}
+                          </select>
                           <select
                             className="input"
                             value={editForm.type}
