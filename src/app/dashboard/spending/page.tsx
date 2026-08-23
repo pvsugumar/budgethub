@@ -19,6 +19,7 @@ export default function SpendingPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [budgetTotal, setBudgetTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [range, setRange] = useState('this-month');
 
   useEffect(() => {
     const userId = localStorage.getItem('userId');
@@ -41,18 +42,27 @@ export default function SpendingPage() {
   }, []);
 
   const now = new Date();
+  const rangeCutoff = (() => {
+    const d = new Date(now);
+    if (range === 'last-3') d.setMonth(d.getMonth() - 3);
+    else if (range === 'last-6') d.setMonth(d.getMonth() - 6);
+    else if (range === 'ytd') return new Date(now.getFullYear(), 0, 1);
+    else return new Date(now.getFullYear(), now.getMonth(), 1);
+    return d;
+  })();
+
   const thisMonthExpenses = transactions.filter((t) => {
     const d = new Date(t.date);
-    return (
-      t.type === 'expense' &&
-      d.getMonth() === now.getMonth() &&
-      d.getFullYear() === now.getFullYear()
-    );
+    return t.type === 'expense' && d >= rangeCutoff && d <= now;
   });
 
   const monthTotal = thisMonthExpenses.reduce((sum, t) => sum + Number(t.amount), 0);
   const budgetRemaining = Math.max(budgetTotal - monthTotal, 0);
-  const dailyAverage = monthTotal / now.getDate();
+  const daysInRange = Math.max(
+    1,
+    Math.ceil((now.getTime() - rangeCutoff.getTime()) / (1000 * 60 * 60 * 24))
+  );
+  const dailyAverage = monthTotal / daysInRange;
 
   const byCategory = thisMonthExpenses.reduce((acc: Record<string, number>, t) => {
     acc[t.category] = (acc[t.category] || 0) + Number(t.amount);
@@ -88,11 +98,27 @@ export default function SpendingPage() {
 
   return (
     <div>
-      <h1 className="text-4xl font-bold mb-8">💸 Spending Analysis</h1>
+      <h1 className="text-4xl font-bold mb-2">💸 Spending Analysis</h1>
+      <p className="text-gray-500 mb-6">Track where your money goes</p>
+
+      {/* Filter bar */}
+      <div className="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap items-center gap-4">
+        <span className="text-sm font-semibold text-gray-700">During:</span>
+        <select
+          className="input w-auto"
+          value={range}
+          onChange={(e) => setRange(e.target.value)}
+        >
+          <option value="this-month">This Month</option>
+          <option value="last-3">Last 3 Months</option>
+          <option value="last-6">Last 6 Months</option>
+          <option value="ytd">Year to Date</option>
+        </select>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white p-6 rounded-lg shadow">
-          <p className="text-gray-600 text-sm">This Month</p>
+          <p className="text-gray-600 text-sm">Total Spent</p>
           <p className="text-3xl font-bold text-red-600 mt-2">${monthTotal.toFixed(2)}</p>
         </div>
 
@@ -107,7 +133,7 @@ export default function SpendingPage() {
         <div className="bg-white p-6 rounded-lg shadow">
           <p className="text-gray-600 text-sm">Daily Average</p>
           <p className="text-3xl font-bold text-blue-600 mt-2">${dailyAverage.toFixed(2)}</p>
-          <p className="text-gray-500 text-xs mt-2">Based on {now.getDate()} days this month</p>
+          <p className="text-gray-500 text-xs mt-2">Based on {daysInRange} days</p>
         </div>
       </div>
 
