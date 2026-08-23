@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { usePlaidLink } from 'react-plaid-link';
 
 interface BankLinkProps {
@@ -13,6 +13,7 @@ export default function BankLink({ userId, onSuccess }: BankLinkProps) {
   const [linkedAccounts, setLinkedAccounts] = useState<any[]>([]);
   const [error, setError] = useState('');
   const [linkToken, setLinkToken] = useState<string | null>(null);
+  const shouldOpenRef = useRef(false);
 
   // Fetch link token from backend
   const fetchLinkToken = async () => {
@@ -82,17 +83,25 @@ export default function BankLink({ userId, onSuccess }: BankLinkProps) {
     },
   });
 
+  // Open Plaid Link automatically once the SDK reports ready (avoids stale-closure race)
+  useEffect(() => {
+    if (ready && shouldOpenRef.current) {
+      shouldOpenRef.current = false;
+      setLoading(false);
+      open();
+    }
+  }, [ready, open]);
+
   const handleLinkClick = async () => {
     if (!linkToken) {
       setLoading(true);
+      shouldOpenRef.current = true;
       const token = await fetchLinkToken();
-      if (token) {
+      if (!token) {
+        shouldOpenRef.current = false;
+        setLoading(false);
+      } else {
         setLinkToken(token);
-        setTimeout(() => {
-          if (ready) {
-            open();
-          }
-        }, 500);
       }
     } else if (ready) {
       open();
