@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Configuration, PlaidApi, PlaidEnvironments, CountryCode } from 'plaid';
+import { Configuration, PlaidApi, PlaidEnvironments, CountryCode, Products } from 'plaid';
 
 const configuration = new Configuration({
   basePath: PlaidEnvironments[process.env.PLAID_ENV || 'sandbox'],
@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
       user: { client_user_id: userId },
       client_name: 'BudgetHub',
       language: 'en',
+      products: [Products.Transactions],
       country_codes: [CountryCode.Us],
     });
 
@@ -45,10 +46,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       link_token: response.data.link_token,
     });
-  } catch (error) {
-    console.error('[Plaid] Error creating link token:', error);
+  } catch (error: any) {
+    const plaidError = error?.response?.data;
+    console.error('[Plaid] Error creating link token:', plaidError || error);
     return NextResponse.json(
-      { error: 'Failed to create link token: ' + (error instanceof Error ? error.message : 'Unknown error') },
+      { error: 'Failed to create link token: ' + (plaidError?.error_message || (error instanceof Error ? error.message : 'Unknown error')) },
       { status: 500 }
     );
   }
