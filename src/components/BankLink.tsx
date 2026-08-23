@@ -15,6 +15,15 @@ export default function BankLink({ userId, onSuccess }: BankLinkProps) {
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const shouldOpenRef = useRef(false);
 
+  // Load previously linked accounts on mount
+  useEffect(() => {
+    if (!userId) return;
+    fetch(`/api/bank-accounts?userId=${userId}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => setLinkedAccounts(data))
+      .catch((err) => console.error('[Plaid] Failed to load linked accounts:', err));
+  }, [userId]);
+
   // Fetch link token from backend
   const fetchLinkToken = async () => {
     try {
