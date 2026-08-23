@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    // TODO: Add authentication check
-    const userId = 'user-id'; // Should come from session
+    const userId = req.nextUrl.searchParams.get('userId');
+
+    if (!userId) {
+      return NextResponse.json({ message: 'Missing userId' }, { status: 400 });
+    }
 
     const budgets = await prisma.budget.findMany({
       where: { userId },
@@ -23,11 +26,9 @@ export async function GET(_req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    // TODO: Add authentication check
-    const userId = 'user-id'; // Should come from session
-    const { category, limit, month, year } = await req.json();
+    const { userId, category, limit, month, year } = await req.json();
 
-    if (!category || !limit) {
+    if (!userId || !category || !limit) {
       return NextResponse.json(
         { message: 'Missing required fields' },
         { status: 400 }
