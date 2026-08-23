@@ -22,16 +22,72 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
+function categoryIcon(category: string): string {
+  const c = category.toLowerCase();
+  if (c.includes('auto') || c.includes('transport') || c.includes('car') || c.includes('gas')) return '🚗';
+  if (c.includes('dining') || c.includes('restaurant') || c.includes('food')) return '🍽️';
+  if (c.includes('coffee')) return '☕';
+  if (c.includes('shop')) return '🛍️';
+  if (c.includes('travel')) return '✈️';
+  if (c.includes('entertain')) return '🎬';
+  if (c.includes('home') || c.includes('rent') || c.includes('mortgage')) return '🏠';
+  if (c.includes('bill') || c.includes('util')) return '📋';
+  if (c.includes('health') || c.includes('medical')) return '🩺';
+  if (c.includes('education') || c.includes('school')) return '🎓';
+  if (c.includes('gift') || c.includes('donat')) return '🎁';
+  if (c.includes('kid')) return '🧸';
+  if (c.includes('financ') || c.includes('fee') || c.includes('interest')) return '🏦';
+  if (c.includes('income') || c.includes('salary') || c.includes('earning') || c.includes('payroll')) return '💰';
+  return '♾️';
+}
+
+// Ring status: how much of the budget is remaining
+function ringColor(remaining: number, limit: number): string {
+  if (remaining < 0) return '#dc2626'; // over budget - red
+  if (limit > 0 && remaining / limit < 0.2) return '#2563eb'; // close to limit - blue
+  return '#16a34a'; // healthy - green
+}
+
+function BudgetRing({ spent, limit }: { spent: number; limit: number }) {
+  const remaining = limit - spent;
+  const percent = limit > 0 ? Math.min((spent / limit) * 100, 100) : 0;
+  const color = ringColor(remaining, limit);
+  const radius = 14;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (percent / 100) * circumference;
+
+  return (
+    <svg width="34" height="34" viewBox="0 0 34 34">
+      <circle cx="17" cy="17" r={radius} fill="none" stroke="#e5e7eb" strokeWidth="4" />
+      <circle
+        cx="17"
+        cy="17"
+        r={radius}
+        fill="none"
+        stroke={color}
+        strokeWidth="4"
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        strokeLinecap="round"
+        transform="rotate(-90 17 17)"
+      />
+    </svg>
+  );
+}
+
 export default function BudgetsPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const now = new Date();
+  const [showAddForm, setShowAddForm] = useState(false);
+  const today = new Date();
+  const [viewMonth, setViewMonth] = useState(today.getMonth() + 1);
+  const [viewYear, setViewYear] = useState(today.getFullYear());
   const [form, setForm] = useState({
     category: '',
     limit: '',
-    month: now.getMonth() + 1,
+    month: today.getMonth() + 1,
   });
 
   const loadData = async (uid: string) => {
@@ -64,13 +120,14 @@ export default function BudgetsPage() {
         userId,
         category: form.category,
         limit: form.limit,
-        month: form.month,
-        year: now.getFullYear(),
+        month: viewMonth,
+        year: viewYear,
       }),
     });
 
     if (res.ok) {
-      setForm({ category: '', limit: '', month: now.getMonth() + 1 });
+      setForm({ category: '', limit: '', month: viewMonth });
+      setShowAddForm(false);
       loadData(userId);
     }
   };
@@ -79,6 +136,15 @@ export default function BudgetsPage() {
     if (!userId) return;
     const res = await fetch(`/api/budgets/${id}`, { method: 'DELETE' });
     if (res.ok) loadData(userId);
+  };
+
+  const changeMonth = (delta: number) => {
+    let m = viewMonth + delta;
+    let y = viewYear;
+    if (m > 12) { m = 1; y += 1; }
+    if (m < 1) { m = 12; y -= 1; }
+    setViewMonth(m);
+    setViewYear(y);
   };
 
   const spentByCategory = (category: string, month: number, year: number) => {
@@ -95,109 +161,167 @@ export default function BudgetsPage() {
       .reduce((sum, t) => sum + Number(t.amount), 0);
   };
 
+  const monthIncome = transactions
+    .filter((t) => {
+      const d = new Date(t.date);
+      return t.type === 'income' && d.getMonth() + 1 === viewMonth && d.getFullYear() === viewYear;
+    })
+    .reduce((sum, t) => sum + Number(t.amount), 0);
+
+  const monthBudgets = budgets.filter((b) => b.month === viewMonth && b.year === viewYear);
+  const totalBudgeted = monthBudgets.reduce((sum, b) => sum + Number(b.limit), 0);
+  const totalActual = monthBudgets.reduce(
+    (sum, b) => sum + spentByCategory(b.category, b.month, b.year),
+    0
+  );
+  const totalRemaining = totalBudgeted - totalActual;
+  const leftForSavings = monthIncome - totalActual;
+
   if (loading) {
     return <div className="text-center py-12 text-gray-600">Loading budgets...</div>;
   }
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-8 text-gray-900">Budgets</h1>
-
-      <div className="card mb-8">
-        <h2 className="text-xl font-bold mb-4">Create Budget</h2>
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="grid md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category
-              </label>
-              <input
-                type="text"
-                className="input"
-                placeholder="Food"
-                value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Monthly Limit
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                className="input"
-                placeholder="500.00"
-                value={form.limit}
-                onChange={(e) => setForm({ ...form, limit: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Month
-              </label>
-              <select
-                className="input"
-                value={form.month}
-                onChange={(e) => setForm({ ...form, month: Number(e.target.value) })}
-              >
-                {MONTHS.map((m, i) => (
-                  <option key={m} value={i + 1}>{m}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <button type="submit" className="btn btn-primary">
-            Create Budget
+      {/* Month navigator */}
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">
+          {MONTHS[viewMonth - 1]} {viewYear} Budget
+        </h1>
+        <div className="flex items-center gap-3">
+          <button onClick={() => changeMonth(-1)} className="px-3 py-1.5 rounded-full border border-gray-300 text-sm hover:bg-gray-50">
+            ← {MONTHS[(viewMonth - 2 + 12) % 12].slice(0, 3)}
           </button>
-        </form>
+          <button onClick={() => changeMonth(1)} className="px-3 py-1.5 rounded-full border border-gray-300 text-sm hover:bg-gray-50">
+            {MONTHS[viewMonth % 12].slice(0, 3)} →
+          </button>
+          <button onClick={() => setShowAddForm(!showAddForm)} className="btn btn-primary">
+            {showAddForm ? '✕ Cancel' : '+ Add Budget'}
+          </button>
+        </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {budgets.length === 0 ? (
-          <div className="text-center py-12 text-gray-600 col-span-full">
-            <p className="text-lg">No budgets yet. Create one to get started!</p>
-          </div>
-        ) : (
-          budgets.map((budget) => {
-            const spent = spentByCategory(budget.category, budget.month, budget.year);
-            const limit = Number(budget.limit);
-            const percent = limit > 0 ? Math.min((spent / limit) * 100, 100) : 0;
-            const overBudget = spent > limit;
-
-            return (
-              <div key={budget.id} className="card">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <h3 className="font-bold text-lg text-gray-900">{budget.category}</h3>
-                    <p className="text-sm text-gray-500">{MONTHS[budget.month - 1]} {budget.year}</p>
-                  </div>
-                  <button
-                    onClick={() => handleDelete(budget.id)}
-                    className="text-red-500 hover:text-red-700 text-sm font-medium"
-                  >
-                    Delete
-                  </button>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2 mt-4">
-                  <div
-                    className={`h-2 rounded-full ${overBudget ? 'bg-red-500' : 'bg-blue-600'}`}
-                    style={{ width: `${percent}%` }}
-                  ></div>
-                </div>
-                <div className="flex justify-between mt-2 text-sm">
-                  <span className={overBudget ? 'text-red-600 font-semibold' : 'text-gray-600'}>
-                    ${spent.toFixed(2)} spent
-                  </span>
-                  <span className="text-gray-600">${limit.toFixed(2)} limit</span>
-                </div>
+      {showAddForm && (
+        <div className="card mb-8">
+          <h2 className="text-xl font-bold mb-4">Create Budget for {MONTHS[viewMonth - 1]} {viewYear}</h2>
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="Food"
+                  value={form.category}
+                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  required
+                />
               </div>
-            );
-          })
-        )}
-      </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Monthly Limit</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="input"
+                  placeholder="500.00"
+                  value={form.limit}
+                  onChange={(e) => setForm({ ...form, limit: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+            <button type="submit" className="btn btn-primary">
+              Create Budget
+            </button>
+          </form>
+        </div>
+      )}
+
+      {monthBudgets.length === 0 ? (
+        <div className="card text-center py-12 text-gray-600">
+          <p className="text-lg">No budgets set for {MONTHS[viewMonth - 1]} {viewYear}. Create one to get started!</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
+            <span className="text-xs font-bold text-gray-500 tracking-wide">BUDGET CATEGORIES</span>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 border-b border-gray-200">
+                <th className="py-3 px-6 font-medium">Name</th>
+                <th className="py-3 px-6 font-medium text-right">Budgeted</th>
+                <th className="py-3 px-6 font-medium text-right">Actual</th>
+                <th className="py-3 px-6 font-medium text-right">Remaining</th>
+                <th className="py-3 px-6 w-10"></th>
+                <th className="py-3 px-6 w-10"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {monthBudgets.map((budget) => {
+                const spent = spentByCategory(budget.category, budget.month, budget.year);
+                const limit = Number(budget.limit);
+                const remaining = limit - spent;
+
+                return (
+                  <tr key={budget.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-3">
+                        <span className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm">
+                          {categoryIcon(budget.category)}
+                        </span>
+                        <span className="font-semibold text-gray-900 underline decoration-gray-300 underline-offset-2">
+                          {budget.category}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6 text-right text-gray-700">${limit.toFixed(2)}</td>
+                    <td className="py-4 px-6 text-right text-gray-700">${spent.toFixed(2)}</td>
+                    <td
+                      className={`py-4 px-6 text-right font-semibold ${
+                        remaining < 0 ? 'text-red-600' : 'text-green-600'
+                      }`}
+                    >
+                      {remaining < 0 ? '-' : ''}${Math.abs(remaining).toFixed(2)}
+                    </td>
+                    <td className="py-4 px-6">
+                      <BudgetRing spent={spent} limit={limit} />
+                    </td>
+                    <td className="py-4 px-6 text-right">
+                      <button
+                        onClick={() => handleDelete(budget.id)}
+                        className="text-red-500 hover:text-red-700 text-sm font-medium"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="bg-gray-50 border-t-2 border-gray-200 font-semibold">
+                <td className="py-4 px-6 text-gray-900">Spending Budget</td>
+                <td className="py-4 px-6 text-right text-gray-900">${totalBudgeted.toFixed(2)}</td>
+                <td className="py-4 px-6 text-right text-gray-900">${totalActual.toFixed(2)}</td>
+                <td className={`py-4 px-6 text-right ${totalRemaining < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {totalRemaining < 0 ? '-' : ''}${Math.abs(totalRemaining).toFixed(2)}
+                </td>
+                <td colSpan={2}></td>
+              </tr>
+              <tr className="bg-gray-50 border-t border-gray-200">
+                <td className="py-3 px-6 text-gray-700 flex items-center gap-2">
+                  <span>💵</span> Left For Savings
+                </td>
+                <td colSpan={3} className="py-3 px-6 text-right font-semibold text-gray-900">
+                  ${leftForSavings.toFixed(2)}
+                </td>
+                <td colSpan={2}></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
