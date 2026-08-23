@@ -24,8 +24,27 @@ model User {
   budgets      Budget[]
   goals        SavingsGoal[]
   bills        Bill[]
+  bankAccounts BankAccount[]
 
   @@index([email])
+}
+
+model BankAccount {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plaidItemId   String
+  accessToken   String
+  accountId     String   @unique
+  name          String
+  type          String
+  subtype       String?
+  mask          String?
+  balance       Decimal  @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Transaction {
@@ -37,6 +56,8 @@ model Transaction {
   category  String
   description String?
   date      DateTime @default(now())
+  plaidTransactionId String? @unique
+  accountId String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
