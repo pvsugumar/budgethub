@@ -90,6 +90,7 @@ export default function TransactionsPage() {
   const [editForm, setEditForm] = useState({ amount: '', category: '', description: '', date: '', type: 'expense' });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkCategory, setBulkCategory] = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
   const [form, setForm] = useState({
     type: 'expense',
     amount: '',
@@ -153,6 +154,7 @@ export default function TransactionsPage() {
         date: new Date().toISOString().split('T')[0],
         description: '',
       });
+      setShowAddForm(false);
       loadTransactions(userId);
     }
   };
@@ -252,11 +254,20 @@ export default function TransactionsPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-8 text-gray-900">Transactions</h1>
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Transactions</h1>
+        <button
+          onClick={() => setShowAddForm(!showAddForm)}
+          className="btn btn-primary"
+        >
+          {showAddForm ? '✕ Cancel' : '+ Add Transaction'}
+        </button>
+      </div>
 
-      <div className="card mb-8">
-        <h2 className="text-xl font-bold mb-4">Add Transaction</h2>
-        <form className="space-y-4" onSubmit={handleSubmit}>
+      {showAddForm && (
+        <div className="card mb-8">
+          <h2 className="text-xl font-bold mb-4">Add Transaction</h2>
+          <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -326,7 +337,8 @@ export default function TransactionsPage() {
             Add Transaction
           </button>
         </form>
-      </div>
+        </div>
+      )}
 
       <div className="card">
         <h2 className="text-xl font-bold mb-4">Transaction History</h2>
