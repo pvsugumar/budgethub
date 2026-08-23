@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 
 interface Transaction {
   id: string;
@@ -11,12 +11,78 @@ interface Transaction {
   date: string;
 }
 
+const DATE_RANGE_OPTIONS = [
+  { value: 'all', label: 'All dates' },
+  { value: '7d', label: 'Last 7 days' },
+  { value: '30d', label: 'Last 30 days' },
+  { value: '90d', label: 'Last 90 days' },
+  { value: 'this-month', label: 'This month' },
+  { value: 'last-month', label: 'Last month' },
+  { value: 'this-year', label: 'This year' },
+  { value: 'last-year', label: 'Last year' },
+];
+
+function getDateRange(option: string): { from: Date | null; to: Date | null } {
+  const now = new Date();
+  switch (option) {
+    case '7d': {
+      const from = new Date(now); from.setDate(from.getDate() - 7);
+      return { from, to: now };
+    }
+    case '30d': {
+      const from = new Date(now); from.setDate(from.getDate() - 30);
+      return { from, to: now };
+    }
+    case '90d': {
+      const from = new Date(now); from.setDate(from.getDate() - 90);
+      return { from, to: now };
+    }
+    case 'this-month':
+      return { from: new Date(now.getFullYear(), now.getMonth(), 1), to: now };
+    case 'last-month': {
+      const from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const to = new Date(now.getFullYear(), now.getMonth(), 0);
+      return { from, to };
+    }
+    case 'this-year':
+      return { from: new Date(now.getFullYear(), 0, 1), to: now };
+    case 'last-year':
+      return { from: new Date(now.getFullYear() - 1, 0, 1), to: new Date(now.getFullYear() - 1, 11, 31) };
+    default:
+      return { from: null, to: null };
+  }
+}
+
+function categoryIcon(category: string): string {
+  const c = category.toLowerCase();
+  if (c.includes('auto') || c.includes('transport') || c.includes('car') || c.includes('gas')) return '🚗';
+  if (c.includes('food') || c.includes('dining') || c.includes('restaurant')) return '🍔';
+  if (c.includes('coffee')) return '☕';
+  if (c.includes('shop')) return '🛍️';
+  if (c.includes('travel')) return '✈️';
+  if (c.includes('entertain')) return '🎬';
+  if (c.includes('home') || c.includes('rent') || c.includes('mortgage')) return '🏠';
+  if (c.includes('util')) return '💡';
+  if (c.includes('health') || c.includes('medical')) return '🩺';
+  if (c.includes('education') || c.includes('school')) return '🎓';
+  if (c.includes('gift') || c.includes('donat')) return '🎁';
+  if (c.includes('kid')) return '🧸';
+  if (c.includes('financ') || c.includes('fee') || c.includes('interest')) return '🏦';
+  if (c.includes('atm') || c.includes('withdraw') || c.includes('cash')) return '💼';
+  if (c.includes('income') || c.includes('salary') || c.includes('payroll')) return '💰';
+  return '🏷️';
+}
+
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filter, setFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateRangeOption, setDateRangeOption] = useState('all');
+  const [dateDropdownOpen, setDateDropdownOpen] = useState(false);
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState('');
+  const dateDropdownRef = useRef<HTMLDivElement>(null);
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,6 +122,19 @@ export default function TransactionsPage() {
     }
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dateDropdownRef.current && !dateDropdownRef.current.contains(e.target as Node)) {
+        setDateDropdownOpen(false);
+      }
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target as Node)) {
+        setCategoryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userId || !form.amount || !form.category) return;
@@ -85,10 +164,11 @@ export default function TransactionsPage() {
 
   const filteredTransactions = transactions.filter((t) => {
     const d = new Date(t.date);
+    const { from, to } = getDateRange(dateRangeOption);
     if (filter !== 'all' && t.type !== filter) return false;
     if (categoryFilter !== 'all' && t.category !== categoryFilter) return false;
-    if (dateFrom && d < new Date(dateFrom)) return false;
-    if (dateTo && d > new Date(dateTo)) return false;
+    if (from && d < from) return false;
+    if (to && d > to) return false;
     if (
       search !== '' &&
       !t.category.toLowerCase().includes(search.toLowerCase()) &&
@@ -258,31 +338,101 @@ export default function TransactionsPage() {
             <option value="income">Income</option>
             <option value="expense">Expenses</option>
           </select>
-          <select
-            className="input w-auto"
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-          >
-            <option value="all">All Categories</option>
-            {categories.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-          <input
-            type="date"
-            className="input w-auto"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            title="From date"
-          />
-          <span className="text-gray-400 text-sm">to</span>
-          <input
-            type="date"
-            className="input w-auto"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            title="To date"
-          />
+
+          {/* Date range dropdown */}
+          <div className="relative" ref={dateDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setDateDropdownOpen(!dateDropdownOpen)}
+              className="input w-auto flex items-center gap-2 justify-between"
+            >
+              <span>{DATE_RANGE_OPTIONS.find((o) => o.value === dateRangeOption)?.label}</span>
+              <span className="text-gray-400 text-xs">▾</span>
+            </button>
+            {dateDropdownOpen && (
+              <div className="absolute z-20 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg py-1 max-h-72 overflow-y-auto">
+                {DATE_RANGE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => {
+                      setDateRangeOption(opt.value);
+                      setDateDropdownOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-50 text-left"
+                  >
+                    <span>{opt.label}</span>
+                    {dateRangeOption === opt.value && <span className="text-gray-900">✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Category dropdown with search + icons */}
+          <div className="relative" ref={categoryDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
+              className="input w-auto flex items-center gap-2 justify-between min-w-[170px]"
+            >
+              <span className="flex items-center gap-2">
+                <span>{categoryFilter === 'all' ? '🏷️' : categoryIcon(categoryFilter)}</span>
+                <span>{categoryFilter === 'all' ? 'All Categories' : categoryFilter}</span>
+              </span>
+              <span className="text-gray-400 text-xs">▾</span>
+            </button>
+            {categoryDropdownOpen && (
+              <div className="absolute z-20 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg py-2">
+                <div className="px-3 pb-2">
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="Search..."
+                    className="input"
+                    value={categorySearch}
+                    onChange={(e) => setCategorySearch(e.target.value)}
+                  />
+                </div>
+                <div className="max-h-60 overflow-y-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCategoryFilter('all');
+                      setCategoryDropdownOpen(false);
+                      setCategorySearch('');
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 text-left"
+                  >
+                    <span className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center">🏷️</span>
+                    <span>All Categories</span>
+                  </button>
+                  {categories
+                    .filter((c) => c.toLowerCase().includes(categorySearch.toLowerCase()))
+                    .map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => {
+                          setCategoryFilter(c);
+                          setCategoryDropdownOpen(false);
+                          setCategorySearch('');
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 text-left ${
+                          categoryFilter === c ? 'bg-blue-50' : ''
+                        }`}
+                      >
+                        <span className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center">
+                          {categoryIcon(c)}
+                        </span>
+                        <span>{c}</span>
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           <input
             type="text"
             placeholder="Search category or description..."
@@ -290,13 +440,12 @@ export default function TransactionsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          {(filter !== 'all' || categoryFilter !== 'all' || dateFrom || dateTo || search) && (
+          {(filter !== 'all' || categoryFilter !== 'all' || dateRangeOption !== 'all' || search) && (
             <button
               onClick={() => {
                 setFilter('all');
                 setCategoryFilter('all');
-                setDateFrom('');
-                setDateTo('');
+                setDateRangeOption('all');
                 setSearch('');
               }}
               className="text-sm text-blue-600 hover:text-blue-800 font-medium"
@@ -419,7 +568,7 @@ export default function TransactionsPage() {
                         {t.description || '—'}
                       </td>
                       <td className="py-3 pr-4">
-                        <span className="badge badge-info">{t.category}</span>
+                        <span className="badge badge-info">{categoryIcon(t.category)} {t.category}</span>
                       </td>
                       <td
                         className={`py-3 pr-4 text-right font-bold whitespace-nowrap ${
