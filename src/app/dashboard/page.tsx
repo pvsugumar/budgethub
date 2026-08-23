@@ -2,27 +2,79 @@
 
 import { useEffect, useState } from 'react';
 
+interface Transaction {
+  id: string;
+  amount: string;
+  type: string;
+  category: string;
+  description: string | null;
+  date: string;
+}
+
+interface Budget {
+  id: string;
+  category: string;
+  limit: string;
+  spent: string;
+}
+
+interface BankAccount {
+  id: string;
+  name: string;
+  balance: number;
+}
+
 export default function DashboardPage() {
-  const [stats] = useState({
-    totalIncome: 0,
-    totalExpenses: 0,
-    netBalance: 0,
-  });
-  const [transactions] = useState<any[]>([]);
-  const [budgets] = useState<any[]>([]);
-  const [savingsGoals] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
+      const userId = localStorage.getItem('userId');
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
       try {
-        // TODO: Fetch from /api/dashboard endpoint
-        // For now, show empty state
+        const [txnsRes, budgetsRes, accountsRes] = await Promise.all([
+          fetch(`/api/transactions?userId=${userId}`),
+          fetch(`/api/budgets?userId=${userId}`),
+          fetch(`/api/bank-accounts?userId=${userId}`),
+        ]);
+        setTransactions(txnsRes.ok ? await txnsRes.json() : []);
+        setBudgets(budgetsRes.ok ? await budgetsRes.json() : []);
+        setBankAccounts(accountsRes.ok ? await accountsRes.json() : []);
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
+      } finally {
+        setLoading(false);
       }
     };
     fetchData();
   }, []);
+
+  const now = new Date();
+  const thisMonthTxns = transactions.filter((t) => {
+    const d = new Date(t.date);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+  const totalIncome = thisMonthTxns
+    .filter((t) => t.type === 'income')
+    .reduce((sum, t) => sum + Number(t.amount), 0);
+  const totalExpenses = thisMonthTxns
+    .filter((t) => t.type === 'expense')
+    .reduce((sum, t) => sum + Number(t.amount), 0);
+  const netBalance = totalIncome - totalExpenses;
+
+  const recentTransactions = transactions.slice(0, 5);
+
+  if (loading) {
+    return (
+      <div className="p-8 text-center text-gray-600">Loading dashboard...</div>
+    );
+  }
 
   return (
     <div className="p-8">
@@ -36,21 +88,21 @@ export default function DashboardPage() {
       <div className="grid md:grid-cols-3 gap-6 mb-10">
         <StatCard
           title="Total Income"
-          amount={`$${stats.totalIncome.toFixed(2)}`}
+          amount={`$${totalIncome.toFixed(2)}`}
           icon="📈"
           color="green"
           subtitle="This month"
         />
         <StatCard
           title="Total Expenses"
-          amount={`$${stats.totalExpenses.toFixed(2)}`}
+          amount={`$${totalExpenses.toFixed(2)}`}
           icon="📉"
           color="red"
           subtitle="This month"
         />
         <StatCard
           title="Net Balance"
-          amount={`$${stats.netBalance.toFixed(2)}`}
+          amount={`$${netBalance.toFixed(2)}`}
           icon="💰"
           color="blue"
           subtitle="Available"
@@ -72,19 +124,16 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="p-6">
-              {transactions.length > 0 ? (
+              {recentTransactions.length > 0 ? (
                 <div className="space-y-4">
-                  {transactions.map((tx) => (
+                  {recentTransactions.map((tx) => (
                     <div key={tx.id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-                      <div className="flex items-center space-x-3">
-                        <span className="text-2xl">{tx.icon}</span>
-                        <div>
-                          <p className="font-semibold text-gray-900">{tx.name}</p>
-                          <p className="text-xs text-gray-500">{tx.date}</p>
-                        </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">{tx.description || tx.category}</p>
+                        <p className="text-xs text-gray-500">{new Date(tx.date).toLocaleDateString()}</p>
                       </div>
-                      <p className={`font-semibold ${tx.amount >= 0 ? 'text-green-600' : 'text-gray-900'}`}>
-                        {tx.amount >= 0 ? '+' : ''} ${tx.amount.toFixed(2)}
+                      <p className={`font-semibold ${tx.type === 'income' ? 'text-green-600' : 'text-gray-900'}`}>
+                        {tx.type === 'income' ? '+' : '-'} ${Number(tx.amount).toFixed(2)}
                       </p>
                     </div>
                   ))}
@@ -107,12 +156,12 @@ export default function DashboardPage() {
                   <div key={budget.id}>
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium text-gray-900">{budget.category}</span>
-                      <span className="text-sm font-semibold text-gray-600">${budget.spent.toFixed(2)} / ${budget.limit.toFixed(2)}</span>
+                      <span className="text-sm font-semibold text-gray-600">${Number(budget.spent).toFixed(2)} / ${Number(budget.limit).toFixed(2)}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
                         className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full"
-                        style={{ width: `${Math.min((budget.spent / budget.limit) * 100, 100)}%` }}
+                        style={{ width: `${Math.min((Number(budget.spent) / Number(budget.limit)) * 100, 100)}%` }}
                       ></div>
                     </div>
                   </div>
@@ -132,51 +181,45 @@ export default function DashboardPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
             <div className="space-y-3">
-              <button className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200">
+              <a href="/dashboard/transactions" className="block text-center w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200">
                 ➕ Add Transaction
-              </button>
-              <button className="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-medium rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200">
+              </a>
+              <a href="/dashboard/budgets" className="block text-center w-full px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-medium rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200">
                 🎯 Set Budget
-              </button>
-              <button className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-medium rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all duration-200">
+              </a>
+              <a href="/dashboard/goals" className="block text-center w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-medium rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all duration-200">
                 🚀 Savings Goal
-              </button>
+              </a>
             </div>
           </div>
 
           {/* Bank Connection Status */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h2 className="text-xl font-bold text-gray-900 mb-4">Bank Connection</h2>
-            <div className="text-center py-6">
-              <p className="text-4xl mb-2">🏦</p>
-              <p className="text-gray-600 font-medium">Not Connected</p>
-              <p className="text-sm text-gray-500 mt-2">Link your bank account to sync transactions automatically</p>
-              <a href="/dashboard/settings" className="inline-block mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
-                Link Bank Account
-              </a>
-            </div>
-          </div>
-
-          {/* Savings Goals */}
-          {savingsGoals.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Savings Goals</h2>
-              <div className="space-y-4">
-                {savingsGoals.map((goal) => (
-                  <div key={goal.id}>
-                    <p className="font-medium text-gray-900 mb-2">{goal.name}</p>
-                    <p className="text-xs text-gray-600 mb-2">${goal.current.toFixed(2)} / ${goal.target.toFixed(2)}</p>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full"
-                        style={{ width: `${Math.min((goal.current / goal.target) * 100, 100)}%` }}
-                      ></div>
+            {bankAccounts.length > 0 ? (
+              <div className="py-2">
+                <p className="text-4xl mb-2 text-center">✅</p>
+                <p className="text-gray-900 font-medium text-center">{bankAccounts.length} Account{bankAccounts.length > 1 ? 's' : ''} Connected</p>
+                <div className="mt-4 space-y-2">
+                  {bankAccounts.map((acc) => (
+                    <div key={acc.id} className="flex justify-between text-sm">
+                      <span className="text-gray-600">{acc.name}</span>
+                      <span className="font-semibold text-gray-900">${acc.balance.toFixed(2)}</span>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-4xl mb-2">🏦</p>
+                <p className="text-gray-600 font-medium">Not Connected</p>
+                <p className="text-sm text-gray-500 mt-2">Link your bank account to sync transactions automatically</p>
+                <a href="/dashboard/settings" className="inline-block mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
+                  Link Bank Account
+                </a>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -221,3 +264,4 @@ function StatCard({
     </div>
   );
 }
+
