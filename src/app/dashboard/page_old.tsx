@@ -1,0 +1,302 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+} from 'recharts';
+
+interface Transaction {
+  id: string;
+  amount: string;
+  type: string;
+  category: string;
+  description: string | null;
+  date: string;
+}
+
+interface Budget {
+  id: string;
+  category: string;
+  limit: string;
+  spent: string;
+}
+
+interface BankAccount {
+  id: string;
+  name: string;
+  balance: number;
+}
+
+export default function DashboardPage() {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const userId = localStorage.getItem('userId');
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const [txnsRes, budgetsRes, accountsRes] = await Promise.all([
+          fetch(`/api/transactions?userId=${userId}`),
+          fetch(`/api/budgets?userId=${userId}`),
+          fetch(`/api/bank-accounts?userId=${userId}`),
+        ]);
+        setTransactions(txnsRes.ok ? await txnsRes.json() : []);
+        setBudgets(budgetsRes.ok ? await budgetsRes.json() : []);
+        setBankAccounts(accountsRes.ok ? await accountsRes.json() : []);
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const now = new Date();
+  const thisMonthTxns = transactions.filter((t) => {
+    const d = new Date(t.date);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+  const totalIncome = thisMonthTxns
+    .filter((t) => t.type === 'income')
+    .reduce((sum, t) => sum + Number(t.amount), 0);
+  const totalExpenses = thisMonthTxns
+    .filter((t) => t.type === 'expense')
+    .reduce((sum, t) => sum + Number(t.amount), 0);
+  const netBalance = totalIncome - totalExpenses;
+
+  const recentTransactions = transactions.slice(0, 5);
+
+  // Last 6 months income vs expense trend
+  const monthlyTrend = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+    const monthTxns = transactions.filter((t) => {
+      const td = new Date(t.date);
+      return td.getMonth() === d.getMonth() && td.getFullYear() === d.getFullYear();
+    });
+    return {
+      month: d.toLocaleString('default', { month: 'short' }),
+      income: monthTxns.filter((t) => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0),
+      expenses: monthTxns.filter((t) => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0),
+    };
+  });
+
+  if (loading) {
+    return (
+      <div className="p-8 text-center text-gray-600">Loading dashboard...</div>
+    );
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-gray-900">Dashboard</h1>
+        <p className="text-gray-600 mt-2">Your financial overview</p>
+      </div>
+
+      {/* Key Metrics */}
+      <div className="grid md:grid-cols-3 gap-6 mb-10">
+        <StatCard
+          title="Total Income"
+          amount={`$${totalIncome.toFixed(2)}`}
+          icon="📈"
+          color="green"
+          subtitle="This month"
+        />
+        <StatCard
+          title="Total Expenses"
+          amount={`$${totalExpenses.toFixed(2)}`}
+          icon="📉"
+          color="red"
+          subtitle="This month"
+        />
+        <StatCard
+          title="Net Balance"
+          amount={`$${netBalance.toFixed(2)}`}
+          icon="💰"
+          color="blue"
+          subtitle="Available"
+        />
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid md:grid-cols-3 gap-8">
+        {/* Left Column - Transactions & Spending */}
+        <div className="md:col-span-2 space-y-8">
+          {/* Income vs Expense Trend */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Income vs Expenses (6 Months)</h2>
+            <div style={{ width: '100%', height: 260 }}>
+              <ResponsiveContainer>
+                <LineChart data={monthlyTrend}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                  <Legend />
+                  <Line type="monotone" dataKey="income" stroke="#10b981" strokeWidth={2} name="Income" />
+                  <Line type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} name="Expenses" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Recent Transactions */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900">Recent Transactions</h2>
+                <a href="/dashboard/transactions" className="text-green-600 hover:text-green-700 text-sm font-medium">
+                  View All →
+                </a>
+              </div>
+            </div>
+            <div className="p-6">
+              {recentTransactions.length > 0 ? (
+                <div className="space-y-4">
+                  {recentTransactions.map((tx) => (
+                    <div key={tx.id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+                      <div>
+                        <p className="font-semibold text-gray-900">{tx.description || tx.category}</p>
+                        <p className="text-xs text-gray-500">{new Date(tx.date).toLocaleDateString()}</p>
+                      </div>
+                      <p className={`font-semibold ${tx.type === 'income' ? 'text-green-600' : 'text-gray-900'}`}>
+                        {tx.type === 'income' ? '+' : '-'} ${Number(tx.amount).toFixed(2)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No transactions yet</p>
+                  <p className="text-sm text-gray-400 mt-1">Link your bank account to get started</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Spending by Category */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Spending by Category</h2>
+            {budgets.length > 0 ? (
+              <div className="space-y-4">
+                {budgets.map((budget) => (
+                  <div key={budget.id}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-gray-900">{budget.category}</span>
+                      <span className="text-sm font-semibold text-gray-600">${Number(budget.spent).toFixed(2)} / ${Number(budget.limit).toFixed(2)}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full"
+                        style={{ width: `${Math.min((Number(budget.spent) / Number(budget.limit)) * 100, 100)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No budget data yet</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column - Quick Actions & Summary */}
+        <div className="space-y-8">
+          {/* Quick Actions */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
+            <div className="space-y-3">
+              <a href="/dashboard/transactions" className="block text-center w-full px-4 py-3 bg-gradient-to-r from-slate-900 to-slate-800 text-white font-medium rounded-lg hover:from-slate-800 hover:to-slate-700 transition-all duration-200 border border-green-500 hover:border-green-400">
+                ➕ Add Transaction
+              </a>
+              <a href="/dashboard/budgets" className="block text-center w-full px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-medium rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200">
+                🎯 Set Budget
+              </a>
+              <a href="/dashboard/goals" className="block text-center w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-medium rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all duration-200">
+                🚀 Savings Goal
+              </a>
+            </div>
+          </div>
+
+          {/* Bank Connection Status */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Bank Connection</h2>
+            {bankAccounts.length > 0 ? (
+              <div className="py-2">
+                <p className="text-4xl mb-2 text-center">✅</p>
+                <p className="text-gray-900 font-medium text-center">{bankAccounts.length} Account{bankAccounts.length > 1 ? 's' : ''} Connected</p>
+                <div className="mt-4 space-y-2">
+                  {bankAccounts.map((acc) => (
+                    <div key={acc.id} className="flex justify-between text-sm">
+                      <span className="text-gray-600">{acc.name}</span>
+                      <span className="font-semibold text-gray-900">${acc.balance.toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-4xl mb-2">🏦</p>
+                <p className="text-gray-600 font-medium">Not Connected</p>
+                <p className="text-sm text-gray-500 mt-2">Link your bank account to sync transactions automatically</p>
+                <a href="/dashboard/settings" className="inline-block mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium">
+                  Link Bank Account
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({
+  title,
+  amount,
+  icon,
+  color,
+  subtitle,
+}: {
+  title: string;
+  amount: string;
+  icon: string;
+  color: string;
+  subtitle?: string;
+}) {
+  const bgColor = {
+    green: 'from-green-50 to-green-100',
+    red: 'from-red-50 to-red-100',
+    blue: 'from-slate-50 to-slate-100',
+  }[color] || 'from-gray-50 to-gray-100';
+
+  const textColor = {
+    green: 'text-green-700',
+    red: 'text-red-700',
+    blue: 'text-slate-700',
+  }[color] || 'text-gray-700';
+
+  return (
+    <div className={`bg-gradient-to-br ${bgColor} rounded-xl p-6 shadow-sm border border-gray-200`}>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className={`${textColor} text-sm font-medium`}>{title}</p>
+          <p className="text-3xl font-bold text-gray-900 mt-2">{amount}</p>
+          {subtitle && <p className="text-xs text-gray-600 mt-1">{subtitle}</p>}
+        </div>
+        <div className="text-5xl opacity-20">{icon}</div>
+      </div>
+    </div>
+  );
+}
+
