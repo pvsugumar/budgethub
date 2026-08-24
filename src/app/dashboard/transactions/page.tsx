@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { CATEGORIES, categoryIcon } from '@/lib/categories';
+import { getMerchantLogo, getMerchantInitials } from '@/lib/merchants';
 
 interface Transaction {
   id: string;
@@ -10,6 +11,14 @@ interface Transaction {
   category: string;
   description: string | null;
   date: string;
+  accountId?: string | null;
+}
+
+interface BankAccount {
+  id: string;
+  name: string;
+  mask?: string | null;
+  type: string;
 }
 
 const DATE_RANGE_OPTIONS = [
@@ -54,34 +63,47 @@ function getDateRange(option: string): { from: Date | null; to: Date | null } {
   }
 }
 
-function getMerchantAvatar(description: string): string {
-  const desc = (description || '').toLowerCase();
-  if (desc.includes('kfc') || desc.includes('fast food')) return '🍔';
-  if (desc.includes('uber') || desc.includes('taxi') || desc.includes('ride')) return '🚕';
-  if (desc.includes('amazon')) return '🛒';
-  if (desc.includes('bike') || desc.includes('bicycle')) return '🚲';
-  if (desc.includes('grocery')) return '🛒';
-  if (desc.includes('restaurant') || desc.includes('dining')) return '🍽️';
-  if (desc.includes('gas') || desc.includes('fuel')) return '⛽';
-  if (desc.includes('coffee')) return '☕';
-  if (desc.includes('hotel') || desc.includes('travel')) return '✈️';
-  if (desc.includes('movie') || desc.includes('cinema')) return '🎬';
-  if (desc.includes('gym') || desc.includes('fitness')) return '💪';
-  if (desc.includes('shopping') || desc.includes('store')) return '🛍️';
-  return '💼';
+// Component for merchant avatar with logo loading
+function MerchantAvatar({ merchantName }: { merchantName: string | null }) {
+  const [logoError, setLogoError] = useState(false);
+  const merchantLabel = merchantName || 'Transaction';
+  const logoUrl = getMerchantLogo(merchantLabel);
+  const initials = getMerchantInitials(merchantLabel);
+  
+  if (logoError || !logoUrl) {
+    // Fallback: show initials with gradient background
+    return (
+      <span className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center text-sm font-semibold text-gray-700 flex-shrink-0">
+        {initials}
+      </span>
+    );
+  }
+  
+  return (
+    <img
+      src={logoUrl}
+      alt={merchantLabel}
+      className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center object-cover flex-shrink-0 border border-gray-100"
+      onError={() => setLogoError(true)}
+    />
+  );
 }
 
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filter, setFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [accountFilter, setAccountFilter] = useState('all');
   const [dateRangeOption, setDateRangeOption] = useState('all');
   const [dateDropdownOpen, setDateDropdownOpen] = useState(false);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+  const [accountDropdownOpen, setAccountDropdownOpen] = useState(false);
   const [actionMenuId, setActionMenuId] = useState<string | null>(null);
   const [categorySearch, setCategorySearch] = useState('');
+  const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const dateDropdownRef = useRef<HTMLDivElement>(null);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
+  const accountDropdownRef = useRef<HTMLDivElement>(null);
   const actionMenuRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
@@ -89,6 +111,10 @@ export default function TransactionsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ amount: '', category: '', description: '', date: '', type: 'expense' });
   const [showAddForm, setShowAddForm] = useState(false);
+  const [inlineEditField, setInlineEditField] = useState<string | null>(null); // "${id}-merchant" or "${id}-category"
+  const [inlineEditValue, setInlineEditValue] = useState('');
+  const [inlineCategoryDropdownOpen, setInlineCategoryDropdownOpen] = useState(false);
+  const inlineCategoryDropdownRef = useRef<HTMLDivElement>(null);
   const [form, setForm] = useState({
     type: 'expense',
     amount: '',
@@ -111,11 +137,24 @@ export default function TransactionsPage() {
     }
   };
 
+  const loadAccounts = async (uid: string) => {
+    try {
+      const res = await fetch(`/api/bank-accounts?userId=${uid}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAccounts(data);
+      }
+    } catch (err) {
+      console.error('Failed to load accounts:', err);
+    }
+  };
+
   useEffect(() => {
     const storedUserId = localStorage.getItem('userId');
     if (storedUserId) {
       setUserId(storedUserId);
       loadTransactions(storedUserId);
+      loadAccounts(storedUserId);
     } else {
       setLoading(false);
     }
@@ -129,8 +168,14 @@ export default function TransactionsPage() {
       if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target as Node)) {
         setCategoryDropdownOpen(false);
       }
+      if (accountDropdownRef.current && !accountDropdownRef.current.contains(e.target as Node)) {
+        setAccountDropdownOpen(false);
+      }
       if (actionMenuRef.current && !actionMenuRef.current.contains(e.target as Node)) {
         setActionMenuId(null);
+      }
+      if (inlineCategoryDropdownRef.current && !inlineCategoryDropdownRef.current.contains(e.target as Node)) {
+        setInlineCategoryDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -170,6 +215,7 @@ export default function TransactionsPage() {
     const { from, to } = getDateRange(dateRangeOption);
     if (filter !== 'all' && t.type !== filter) return false;
     if (categoryFilter !== 'all' && t.category !== categoryFilter) return false;
+    if (accountFilter !== 'all' && t.accountId !== accountFilter) return false;
     if (from && d < from) return false;
     if (to && d > to) return false;
     if (search !== '') {
@@ -218,13 +264,53 @@ export default function TransactionsPage() {
     }
   };
 
+  const startInlineEdit = (id: string, field: 'merchant' | 'category', currentValue: string) => {
+    setInlineEditField(`${id}-${field}`);
+    setInlineEditValue(currentValue);
+    if (field === 'category') {
+      setInlineCategoryDropdownOpen(true);
+    }
+  };
+
+  const saveInlineEdit = async (id: string) => {
+    if (!inlineEditField) return;
+    
+    const [transactionId, field] = inlineEditField.split('-');
+    if (transactionId !== id) return;
+
+    const transaction = transactions.find(t => t.id === id);
+    if (!transaction) return;
+
+    const updateData = field === 'merchant' 
+      ? { ...transaction, description: inlineEditValue }
+      : { ...transaction, category: inlineEditValue };
+
+    const res = await fetch(`/api/transactions/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updateData),
+    });
+
+    if (res.ok && userId) {
+      setInlineEditField(null);
+      setInlineEditValue('');
+      setInlineCategoryDropdownOpen(false);
+      loadTransactions(userId);
+    }
+  };
+
+  const cancelInlineEdit = () => {
+    setInlineEditField(null);
+    setInlineEditValue('');
+    setInlineCategoryDropdownOpen(false);
+  };
+
   const formatAmount = (amount: string): string => {
     const num = Number(amount);
-    if (num % 1 === 0) return num.toLocaleString();
     return num.toFixed(2);
   };
 
-  const hasActiveFilters = filter !== 'all' || categoryFilter !== 'all' || dateRangeOption !== 'all' || search;
+  const hasActiveFilters = filter !== 'all' || categoryFilter !== 'all' || accountFilter !== 'all' || dateRangeOption !== 'all' || search;
 
   return (
     <div className="space-y-6">
@@ -403,6 +489,59 @@ export default function TransactionsPage() {
           )}
         </div>
 
+        {/* Accounts Filter Pill */}
+        <div className="relative" ref={accountDropdownRef}>
+          <button
+            onClick={() => setAccountDropdownOpen(!accountDropdownOpen)}
+            className={`px-4 py-2 rounded-full font-medium text-sm transition flex items-center gap-2 ${
+              accountFilter === 'all'
+                ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+            }`}
+          >
+            <span>🏦</span>
+            <span>{accountFilter === 'all' ? 'All Accounts' : accounts.find(a => a.id === accountFilter)?.name || 'Account'}</span>
+            <span>▼</span>
+          </button>
+          {accountDropdownOpen && (
+            <div className="absolute z-20 mt-2 w-72 bg-white border border-gray-200 rounded-xl shadow-lg py-3">
+              <div className="max-h-60 overflow-y-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAccountFilter('all');
+                    setAccountDropdownOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 text-left"
+                >
+                  <span className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">🏦</span>
+                  <span className="font-medium text-gray-700">All Accounts</span>
+                </button>
+                {accounts.map((account) => (
+                  <button
+                    key={account.id}
+                    type="button"
+                    onClick={() => {
+                      setAccountFilter(account.id);
+                      setAccountDropdownOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 text-left ${
+                      accountFilter === account.id ? 'bg-blue-50' : ''
+                    }`}
+                  >
+                    <span className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center font-lg">💳</span>
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-700">{account.name}</div>
+                      {account.mask && <div className="text-xs text-gray-500">•••• {account.mask}</div>}
+                    </div>
+                    {accountFilter === account.id && <span className="ml-auto text-primary font-bold">✓</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Category Filter Pill */}
         <div className="relative" ref={categoryDropdownRef}>
           <button
@@ -475,6 +614,7 @@ export default function TransactionsPage() {
             onClick={() => {
               setFilter('all');
               setCategoryFilter('all');
+              setAccountFilter('all');
               setDateRangeOption('all');
               setSearch('');
             }}
@@ -576,24 +716,94 @@ export default function TransactionsPage() {
                         {new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <span className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center text-lg">
-                            {getMerchantAvatar(t.description || '')}
-                          </span>
-                          <span className="font-medium text-gray-900 truncate">{t.description || 'Transaction'}</span>
-                        </div>
+                        {inlineEditField === `${t.id}-merchant` ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              autoFocus
+                              value={inlineEditValue}
+                              onChange={(e) => setInlineEditValue(e.target.value)}
+                              onBlur={() => saveInlineEdit(t.id)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') saveInlineEdit(t.id);
+                                if (e.key === 'Escape') cancelInlineEdit();
+                              }}
+                              className="flex-1 px-2 py-1 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                            />
+                            <button
+                              onClick={() => saveInlineEdit(t.id)}
+                              className="p-1 hover:bg-green-100 rounded text-green-600 font-bold"
+                            >
+                              ✓
+                            </button>
+                            <button
+                              onClick={cancelInlineEdit}
+                              className="p-1 hover:bg-red-100 rounded text-red-600 font-bold"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <div
+                            className="flex items-center gap-3 cursor-pointer group"
+                            onClick={() => startInlineEdit(t.id, 'merchant', t.description || '')}
+                          >
+                            <MerchantAvatar merchantName={t.description || 'Transaction'} />
+                            <span className="font-medium text-gray-900 truncate group-hover:text-primary transition">
+                              {t.description || 'Transaction'}
+                            </span>
+                            <span className="text-gray-400 text-xs opacity-0 group-hover:opacity-100 transition">✎</span>
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4">
-                        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-sm font-medium">
-                          {categoryIcon(t.category)} {t.category}
-                        </span>
+                        {inlineEditField === `${t.id}-category` ? (
+                          <div className="relative" ref={inlineCategoryDropdownRef}>
+                            <button
+                              onClick={() => setInlineCategoryDropdownOpen(!inlineCategoryDropdownOpen)}
+                              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-medium hover:bg-blue-200 transition"
+                            >
+                              {categoryIcon(inlineEditValue)} {inlineEditValue} ▼
+                            </button>
+                            {inlineCategoryDropdownOpen && (
+                              <div className="absolute z-20 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-lg py-2 max-h-60 overflow-y-auto">
+                                {CATEGORIES.map((c) => (
+                                  <button
+                                    key={c.name}
+                                    type="button"
+                                    onClick={() => {
+                                      setInlineEditValue(c.name);
+                                      saveInlineEdit(t.id);
+                                    }}
+                                    className={`w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 text-left ${
+                                      inlineEditValue === c.name ? 'bg-blue-50' : ''
+                                    }`}
+                                  >
+                                    <span className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-sm">
+                                      {c.icon}
+                                    </span>
+                                    <span className="font-medium text-gray-700">{c.name}</span>
+                                    {inlineEditValue === c.name && <span className="ml-auto text-primary font-bold">✓</span>}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span
+                            onClick={() => startInlineEdit(t.id, 'category', t.category)}
+                            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-sm font-medium cursor-pointer hover:bg-blue-100 transition group"
+                          >
+                            {categoryIcon(t.category)} {t.category}
+                            <span className="text-blue-400 text-xs opacity-0 group-hover:opacity-100 transition">✎</span>
+                          </span>
+                        )}
                       </td>
                       <td className={`px-6 py-4 text-right font-semibold whitespace-nowrap ${
                         t.type === 'income' ? 'text-green-600' : 'text-red-600'
                       }`}>
                         <span className="flex items-center justify-end gap-1">
-                          <span className="text-lg">{t.type === 'income' ? '▲' : '▼'}</span>
-                          <span>${formatAmount(t.amount)}</span>
+                          <span>${formatAmount(t.amount)}{t.type === 'income' ? '▲' : '▼'}</span>
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
