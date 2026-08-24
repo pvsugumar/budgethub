@@ -127,13 +127,6 @@ export default function DashboardPage() {
     };
   }).filter((c) => c.spent > 0 || c.limit > 0);
 
-  // Financial health metrics
-  const budgetUsage = budgets.length > 0
-    ? (budgets.reduce((sum, b) => sum + Number(b.spent), 0) / budgets.reduce((sum, b) => sum + Number(b.limit), 0)) * 100
-    : 0;
-
-  const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome) * 100 : 0;
-
   const upcomingBills = bills.filter((b) => {
     const dueDate = new Date(b.dueDate);
     const nextWeek = new Date(now);
@@ -155,8 +148,19 @@ export default function DashboardPage() {
         <p className="text-gray-600">Your financial overview</p>
       </div>
 
-      {/* KPI Cards - Modern & Clean */}
-      <div className="grid md:grid-cols-3 gap-4">
+      {/* KPI Cards - Net Balance Primary */}
+      <div className="grid md:grid-cols-4 gap-3">
+        <div className="md:col-span-2">
+          <KPICard
+            title="Net Balance"
+            amount={netBalance.toFixed(2)}
+            change={null}
+            changeLabel="This month"
+            type="balance"
+            highlight
+            large
+          />
+        </div>
         <KPICard
           title="Income"
           amount={totalIncome.toFixed(2)}
@@ -171,24 +175,16 @@ export default function DashboardPage() {
           changeLabel="vs last month"
           type="expense"
         />
-        <KPICard
-          title="Net Balance"
-          amount={netBalance.toFixed(2)}
-          change={null}
-          changeLabel="This month"
-          type="balance"
-          highlight
-        />
       </div>
 
       {/* Main Content - 2 Column Layout */}
-      <div className="grid md:grid-cols-3 gap-5">
+      <div className="grid md:grid-cols-3 gap-4">
         {/* Left Column - 65% */}
-        <div className="md:col-span-2 space-y-5">
+        <div className="md:col-span-2 space-y-4">
           {/* Income vs Expenses Chart */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Income vs Expenses</h2>
-            <div style={{ width: '100%', height: 240 }}>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
+            <h2 className="text-lg font-bold text-gray-900 mb-3">Income vs Expenses</h2>
+            <div style={{ width: '100%', height: 140 }}>
               <ResponsiveContainer>
                 <BarChart data={monthlyTrend} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="0" stroke="#f0f0f0" vertical={false} />
@@ -207,7 +203,7 @@ export default function DashboardPage() {
 
           {/* Recent Transactions */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100">
+            <div className="px-5 py-3 border-b border-gray-100">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-gray-900">Recent Transactions</h2>
                 <a href="/dashboard/transactions" className="text-emerald-600 hover:text-emerald-700 text-sm font-medium">
@@ -218,14 +214,14 @@ export default function DashboardPage() {
             <div className="divide-y divide-gray-100">
               {recentTransactions.length > 0 ? (
                 recentTransactions.map((tx) => (
-                  <div key={tx.id} className="px-6 py-3 hover:bg-gray-50 transition flex items-center justify-between">
+                  <div key={tx.id} className="px-5 py-2.5 hover:bg-gray-50 transition flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center text-sm font-semibold text-gray-700 flex-shrink-0">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center text-xs font-semibold text-gray-700 flex-shrink-0">
                         {getMerchantInitials(tx.description || 'T')}
                       </div>
                       <div>
                         <p className="font-medium text-gray-900 text-sm">{tx.description || tx.category}</p>
-                        <p className="text-xs text-gray-500">{new Date(tx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                        <p className="text-xs text-gray-500">{tx.category} • {new Date(tx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
                       </div>
                     </div>
                     <p className={`font-semibold text-sm ${tx.type === 'income' ? 'text-green-600' : 'text-gray-900'}`}>
@@ -234,7 +230,7 @@ export default function DashboardPage() {
                   </div>
                 ))
               ) : (
-                <div className="px-6 py-8 text-center">
+                <div className="px-5 py-6 text-center">
                   <p className="text-gray-500 text-sm">No transactions yet</p>
                 </div>
               )}
@@ -242,29 +238,42 @@ export default function DashboardPage() {
           </div>
 
           {/* Budget Progress */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-5">Budget Progress</h2>
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
+            <h2 className="text-lg font-bold text-gray-900 mb-4">Budget Progress</h2>
             {categorySpending.length > 0 ? (
-              <div className="space-y-4">
-                {categorySpending.slice(0, 5).map((cat) => (
-                  <div key={cat.name}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">{categoryIcon(cat.name)}</span>
-                        <span className="font-medium text-gray-900 text-sm">{cat.name}</span>
+              <div className="space-y-3">
+                {categorySpending.slice(0, 5).map((cat) => {
+                  const percentUsed = cat.limit > 0 ? (cat.spent / cat.limit) * 100 : 0;
+                  let statusColor = 'bg-emerald-500';
+                  let statusLabel = '✅';
+                  if (percentUsed >= 100) {
+                    statusColor = 'bg-red-500';
+                    statusLabel = '🚨';
+                  } else if (percentUsed >= 80) {
+                    statusColor = 'bg-amber-500';
+                    statusLabel = '⚠️';
+                  }
+                  return (
+                    <div key={cat.name}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{categoryIcon(cat.name)}</span>
+                          <span className="font-medium text-gray-900 text-sm">{cat.name}</span>
+                          <span className="text-xs text-gray-500">{statusLabel}</span>
+                        </div>
+                        <span className="text-sm font-semibold text-gray-600">
+                          ${cat.spent.toFixed(0)}{cat.limit > 0 ? ` / $${cat.limit.toFixed(0)}` : ''}
+                        </span>
                       </div>
-                      <span className="text-sm font-semibold text-gray-600">
-                        ${cat.spent.toFixed(0)}{cat.limit > 0 ? ` / $${cat.limit.toFixed(0)}` : ''}
-                      </span>
+                      <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                        <div
+                          className={`${statusColor} h-2 rounded-full transition-all`}
+                          style={{ width: `${Math.min(percentUsed, 100)}%` }}
+                        ></div>
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-emerald-500 h-2 rounded-full transition-all"
-                        style={{ width: `${Math.min((cat.spent / (cat.limit || cat.spent)) * 100, 100)}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-gray-500 text-sm text-center py-4">No budget data yet</p>
@@ -273,81 +282,63 @@ export default function DashboardPage() {
         </div>
 
         {/* Right Column - 35% */}
-        <div className="space-y-5">
-          {/* Financial Health */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Financial Health</h2>
-            <div className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-600">Savings Rate</span>
-                  <span className="text-lg font-bold text-emerald-600">{savingsRate.toFixed(0)}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-1.5">
-                  <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: `${Math.min(savingsRate, 100)}%` }}></div>
-                </div>
+        <div className="space-y-4">
+          {/* Financial Insights */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
+            <h2 className="text-lg font-bold text-gray-900 mb-4">Financial Insights</h2>
+            <div className="space-y-3">
+              <div className="pb-3 border-b border-gray-100">
+                <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Top Spending Category</p>
+                <p className="text-sm font-semibold text-gray-900 mt-1">
+                  {categorySpending.length > 0 ? categorySpending[0].name : 'No data'}
+                </p>
+              </div>
+              <div className="pb-3 border-b border-gray-100">
+                <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Largest Expense</p>
+                <p className="text-sm font-semibold text-gray-900 mt-1">
+                  ${recentTransactions.length > 0 ? Math.max(...recentTransactions.map(t => Number(t.amount))).toFixed(0) : '0'}
+                </p>
               </div>
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-600">Budget Usage</span>
-                  <span className="text-lg font-bold text-amber-600">{budgetUsage.toFixed(0)}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-1.5">
-                  <div className="bg-amber-500 h-1.5 rounded-full" style={{ width: `${Math.min(budgetUsage, 100)}%` }}></div>
-                </div>
-              </div>
-              <div className="pt-2 border-t border-gray-100">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Upcoming Bills</span>
-                  <span className="text-lg font-bold text-gray-900">{upcomingBills}</span>
-                </div>
+                <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Upcoming Bills</p>
+                <p className="text-sm font-semibold text-gray-900 mt-1">{upcomingBills} Due This Week</p>
               </div>
             </div>
           </div>
 
-          {/* Connected Accounts */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Connected Accounts</h2>
+          {/* Connected Accounts Summary */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
+            <h2 className="text-lg font-bold text-gray-900 mb-3">Connected Accounts</h2>
             {bankAccounts.length > 0 ? (
-              <div className="space-y-3">
-                <p className="text-sm text-gray-600">{bankAccounts.length} Accounts</p>
-                <div className="space-y-2">
-                  {bankAccounts.slice(0, 3).map((acc) => (
-                    <div key={acc.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition">
-                      <span className="text-sm text-gray-700">{acc.name}</span>
-                      <span className="text-sm font-semibold text-gray-900">${acc.balance.toFixed(0)}</span>
-                    </div>
-                  ))}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between py-1.5 text-sm">
+                  <span className="text-gray-600">🏦 Banking</span>
+                  <span className="font-semibold text-gray-900">({bankAccounts.filter(a => !a.name.toLowerCase().includes('credit') && !a.name.toLowerCase().includes('loan')).length})</span>
                 </div>
-                <a href="/dashboard/settings" className="inline-block text-xs text-emerald-600 hover:text-emerald-700 font-medium mt-2">
-                  View All →
-                </a>
+                <div className="flex items-center justify-between py-1.5 text-sm border-t border-gray-100 pt-2">
+                  <span className="text-gray-600">💳 Credit Cards</span>
+                  <span className="font-semibold text-gray-900">({bankAccounts.filter(a => a.name.toLowerCase().includes('credit')).length})</span>
+                </div>
+                <div className="flex items-center justify-between py-1.5 text-sm">
+                  <span className="text-gray-600">🏠 Loans</span>
+                  <span className="font-semibold text-gray-900">({bankAccounts.filter(a => a.name.toLowerCase().includes('loan')).length})</span>
+                </div>
+                <div className="flex items-center justify-between py-2 text-sm font-semibold text-emerald-600 border-t border-gray-100 mt-1 pt-2">
+                  <span>{bankAccounts.length} Total Accounts</span>
+                  <a href="/dashboard/settings" className="text-xs text-emerald-600 hover:text-emerald-700">View →</a>
+                </div>
               </div>
             ) : (
-              <div className="text-center py-4">
-                <p className="text-sm text-gray-600">No accounts connected</p>
-                <a href="/dashboard/settings" className="inline-block mt-3 px-4 py-2 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 transition font-medium">
+              <div className="text-center py-3">
+                <p className="text-sm text-gray-600 mb-3">No accounts connected</p>
+                <a href="/dashboard/settings" className="inline-block px-3 py-1.5 bg-emerald-600 text-white text-xs rounded-lg hover:bg-emerald-700 transition font-medium">
                   Link Account
                 </a>
               </div>
             )}
           </div>
 
-          {/* Quick Actions - Compact */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h2>
-            <div className="space-y-2">
-              <a href="/dashboard/transactions" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition text-sm font-medium text-gray-700">
-                <span>➕</span> Add Transaction
-              </a>
-              <a href="/dashboard/budgets" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition text-sm font-medium text-gray-700">
-                <span>🎯</span> Create Budget
-              </a>
-              <a href="/dashboard/goals" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition text-sm font-medium text-gray-700">
-                <span>🚀</span> Savings Goal
-              </a>
-            </div>
-          </div>
+
         </div>
       </div>
     </div>
@@ -361,6 +352,7 @@ function KPICard({
   changeLabel,
   type,
   highlight,
+  large,
 }: {
   title: string;
   amount: string;
@@ -368,22 +360,25 @@ function KPICard({
   changeLabel: string;
   type: 'income' | 'expense' | 'balance';
   highlight?: boolean;
+  large?: boolean;
 }) {
-  const bgClass = highlight ? 'bg-gray-50' : 'bg-white';
+  const bgClass = highlight ? 'bg-emerald-50' : 'bg-white';
   const borderClass = highlight ? 'border-2 border-emerald-200' : 'border border-gray-200';
   const amountColorClass = {
     income: 'text-emerald-600',
     expense: 'text-red-600',
-    balance: highlight ? 'text-gray-900' : 'text-gray-700',
+    balance: highlight ? 'text-emerald-700' : 'text-gray-700',
   }[type];
 
   const changeColorClass = change && change > 0 ? 'text-emerald-600' : change && change < 0 ? 'text-red-600' : 'text-gray-600';
+  const amountSizeClass = large ? 'text-4xl' : 'text-3xl';
+  const paddingClass = large ? 'p-6' : 'p-5';
 
   return (
-    <div className={`${bgClass} ${borderClass} rounded-2xl p-5 shadow-sm transition hover:shadow-md`}>
+    <div className={`${bgClass} ${borderClass} rounded-2xl ${paddingClass} shadow-sm transition hover:shadow-md`}>
       <p className="text-sm font-medium text-gray-600">{title}</p>
-      <p className={`text-3xl font-bold ${amountColorClass} mt-2`}>${amount}</p>
-      <div className="mt-3 flex items-center justify-between text-xs">
+      <p className={`${amountSizeClass} font-bold ${amountColorClass} mt-2`}>${amount}</p>
+      <div className="mt-4 flex items-center justify-between text-xs">
         {change !== null ? (
           <>
             <span className={`font-semibold ${changeColorClass}`}>
