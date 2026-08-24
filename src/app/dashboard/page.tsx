@@ -42,6 +42,24 @@ export default function DashboardPage() {
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userName, setUserName] = useState('');
+  const [greeting, setGreeting] = useState('');
+
+  useEffect(() => {
+    // Get user name from localStorage
+    const name = localStorage.getItem('userName');
+    setUserName(name || '');
+
+    // Set greeting based on time of day
+    const hour = new Date().getHours();
+    if (hour < 12) {
+      setGreeting('Good Morning');
+    } else if (hour < 18) {
+      setGreeting('Good Afternoon');
+    } else {
+      setGreeting('Good Evening');
+    }
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -127,12 +145,16 @@ export default function DashboardPage() {
     };
   }).filter((c) => c.spent > 0 || c.limit > 0);
 
-  const upcomingBills = bills.filter((b) => {
+  const userFirstName = userName.split(' ')[0] || 'there';
+
+  const upcomingBillsCount = bills.filter((b) => {
     const dueDate = new Date(b.dueDate);
     const nextWeek = new Date(now);
     nextWeek.setDate(nextWeek.getDate() + 7);
     return dueDate >= now && dueDate <= nextWeek;
   }).length;
+
+  const upcomingBillsText = upcomingBillsCount === 0 ? '0 bills due' : `${upcomingBillsCount} bill${upcomingBillsCount > 1 ? 's' : ''} due`;
 
   if (loading) {
     return (
@@ -142,10 +164,23 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5">
-      {/* Header - Compact */}
-      <div className="space-y-1">
-        <h1 className="text-4xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600">Your financial overview</p>
+      {/* Header - With Personalized Greeting */}
+      <div className="flex items-start justify-between mb-6">
+        {/* Left Side */}
+        <div className="space-y-1">
+          <h1 className="text-4xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600">Your financial overview</p>
+        </div>
+
+        {/* Right Side - Personalized Greeting */}
+        <div className="text-right hidden md:block">
+          <p className="text-lg font-semibold text-gray-900">
+            {greeting}, {userFirstName} 👋
+          </p>
+          <p className="text-sm text-gray-500 mt-1">
+            {bankAccounts.length} connected accounts • {upcomingBillsText}
+          </p>
+        </div>
       </div>
 
       {/* KPI Cards - Net Balance Primary */}
@@ -301,7 +336,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Upcoming Bills</p>
-                <p className="text-sm font-semibold text-gray-900 mt-1">{upcomingBills} Due This Week</p>
+                <p className="text-sm font-semibold text-gray-900 mt-1">{upcomingBillsCount} Due This Week</p>
               </div>
             </div>
           </div>
