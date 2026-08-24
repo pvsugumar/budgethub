@@ -54,65 +54,78 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-      <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
-        <h1 className="text-3xl font-bold mb-6 text-center text-gray-900">Create Account</h1>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-cyan-50 flex flex-col items-center justify-center px-4">
+      {/* Brand Section */}
+      <div className="text-center mb-12">
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <span className="text-4xl">💰</span>
+          <h1 className="text-3xl font-bold text-gray-900">BudgetHub</h1>
+        </div>
+        <p className="text-gray-600 text-lg font-medium">Create Your Account</p>
+        <p className="text-gray-500 text-sm mt-2">Start managing your finances with confidence.</p>
+      </div>
 
+      {/* Signup Card */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 w-full max-w-md">
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Full Name
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              👤 Full Name
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="input"
+              placeholder="John Doe"
+              className="w-full h-12 px-4 rounded-lg border border-gray-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 focus:outline-none transition-all duration-200 text-gray-900 placeholder-gray-500"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              📧 Email
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="input"
+              placeholder="you@example.com"
+              className="w-full h-12 px-4 rounded-lg border border-gray-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 focus:outline-none transition-all duration-200 text-gray-900 placeholder-gray-500"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Password
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              🔒 Password
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="input"
+              placeholder="••••••••"
+              className="w-full h-12 px-4 rounded-lg border border-gray-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 focus:outline-none transition-all duration-200 text-gray-900 placeholder-gray-500"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Confirm Password
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              ✓ Confirm Password
             </label>
             <input
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="input"
+              placeholder="••••••••"
+              className="w-full h-12 px-4 rounded-lg border border-gray-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 focus:outline-none transition-all duration-200 text-gray-900 placeholder-gray-500"
               required
             />
           </div>
@@ -120,19 +133,26 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading}
-            className="btn btn-primary w-full"
+            className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white font-semibold rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 mt-6"
           >
-            {loading ? 'Creating account...' : 'Sign Up'}
+            {loading ? 'Creating account...' : 'Create Account'}
           </button>
         </form>
 
-        <p className="text-center text-gray-600 mt-6">
-          Already have an account?{' '}
-          <Link href="/auth/login" className="text-blue-600 hover:underline">
-            Login
-          </Link>
-        </p>
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <p className="text-center text-sm text-gray-600">
+            Already have an account?{' '}
+            <Link href="/auth/login" className="text-emerald-600 hover:text-emerald-700 font-semibold transition-colors">
+              Sign In
+            </Link>
+          </p>
+        </div>
       </div>
+
+      {/* Footer Text */}
+      <p className="text-center text-gray-500 text-xs mt-8">
+        Secure. Fast. Transparent.
+      </p>
     </div>
   );
 }
