@@ -415,10 +415,10 @@ export default function TransactionsPage() {
                           setCategorySearch('');
                         }}
                         className={`w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 text-left ${
-                          categoryFilter === c ? 'bg-blue-50' : ''
+                          categoryFilter === c ? 'bg-green-50' : ''
                         }`}
                       >
-                        <span className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center">
+                        <span className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center">
                           {categoryIcon(c)}
                         </span>
                         <span>{c}</span>
@@ -444,7 +444,7 @@ export default function TransactionsPage() {
                 setDateRangeOption('all');
                 setSearch('');
               }}
-              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              className="text-sm text-green-600 hover:text-green-800 font-medium"
             >
               Clear filters
             </button>
@@ -453,8 +453,8 @@ export default function TransactionsPage() {
 
         {/* Bulk actions toolbar */}
         {selectedIds.size > 0 && (
-          <div className="mb-4 flex flex-wrap items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <span className="text-sm font-semibold text-blue-900">{selectedIds.size} selected</span>
+          <div className="mb-4 flex flex-wrap items-center gap-3 bg-green-50 border border-green-200 rounded-lg p-3">
+            <span className="text-sm font-semibold text-green-900">{selectedIds.size} selected</span>
             <select
               className="input w-auto"
               value={bulkCategory}
@@ -505,7 +505,7 @@ export default function TransactionsPage() {
               <tbody>
                 {filteredTransactions.map((t) =>
                   editingId === t.id ? (
-                    <tr key={t.id} className="border-b border-blue-100 bg-blue-50">
+                    <tr key={t.id} className="border-b border-green-100 bg-green-50">
                       <td colSpan={6} className="py-3 px-2">
                         <div className="grid md:grid-cols-5 gap-2">
                           <input
@@ -582,7 +582,7 @@ export default function TransactionsPage() {
                         {t.type === 'income' ? '+' : '-'}${Number(t.amount).toFixed(2)}
                       </td>
                       <td className="py-3 pr-2 text-right whitespace-nowrap">
-                        <button onClick={() => startEdit(t)} className="text-blue-600 hover:text-blue-800 text-sm font-medium mr-3">
+                        <button onClick={() => startEdit(t)} className="text-green-600 hover:text-green-800 text-sm font-medium mr-3">
                           Edit
                         </button>
                         <button onClick={() => handleDelete(t.id)} className="text-red-500 hover:text-red-700 text-sm font-medium">

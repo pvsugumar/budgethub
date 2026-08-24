@@ -153,7 +153,7 @@ export default function DashboardPage() {
             <div className="px-6 py-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold text-gray-900">Recent Transactions</h2>
-                <a href="/dashboard/transactions" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                <a href="/dashboard/transactions" className="text-green-600 hover:text-green-700 text-sm font-medium">
                   View All →
                 </a>
               </div>
@@ -195,7 +195,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
-                        className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full"
+                        className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full"
                         style={{ width: `${Math.min((Number(budget.spent) / Number(budget.limit)) * 100, 100)}%` }}
                       ></div>
                     </div>
@@ -216,7 +216,7 @@ export default function DashboardPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
             <div className="space-y-3">
-              <a href="/dashboard/transactions" className="block text-center w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200">
+              <a href="/dashboard/transactions" className="block text-center w-full px-4 py-3 bg-gradient-to-r from-slate-900 to-slate-800 text-white font-medium rounded-lg hover:from-slate-800 hover:to-slate-700 transition-all duration-200 border border-green-500 hover:border-green-400">
                 ➕ Add Transaction
               </a>
               <a href="/dashboard/budgets" className="block text-center w-full px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-medium rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200">
@@ -249,7 +249,7 @@ export default function DashboardPage() {
                 <p className="text-4xl mb-2">🏦</p>
                 <p className="text-gray-600 font-medium">Not Connected</p>
                 <p className="text-sm text-gray-500 mt-2">Link your bank account to sync transactions automatically</p>
-                <a href="/dashboard/settings" className="inline-block mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
+                <a href="/dashboard/settings" className="inline-block mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium">
                   Link Bank Account
                 </a>
               </div>
@@ -277,13 +277,13 @@ function StatCard({
   const bgColor = {
     green: 'from-green-50 to-green-100',
     red: 'from-red-50 to-red-100',
-    blue: 'from-blue-50 to-blue-100',
+    blue: 'from-slate-50 to-slate-100',
   }[color] || 'from-gray-50 to-gray-100';
 
   const textColor = {
     green: 'text-green-700',
     red: 'text-red-700',
-    blue: 'text-blue-700',
+    blue: 'text-slate-700',
   }[color] || 'text-gray-700';
 
   return (

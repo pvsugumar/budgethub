@@ -70,6 +70,7 @@ model Budget {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category  String
+  type      String   @default("expense") // 'income', 'expense'
   limit     Decimal
   spent     Decimal  @default(0)
   month     Int      // Month (1-12)

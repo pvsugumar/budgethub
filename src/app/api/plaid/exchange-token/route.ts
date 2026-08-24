@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Configuration, PlaidApi, PlaidEnvironments } from 'plaid';
 import { prisma } from '@/lib/db';
+import { normalizeCategory } from '@/lib/categories';
 
 const configuration = new Configuration({
   basePath: PlaidEnvironments[process.env.PLAID_ENV || 'sandbox'],
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
             userId,
             amount: Math.abs(t.amount),
             type: t.amount > 0 ? 'expense' : 'income',
-            category: t.category?.[0] || 'Other',
+            category: normalizeCategory(t.category?.[0] || 'Other'),
             description: t.name,
             date: new Date(t.date),
             plaidTransactionId: t.transaction_id,

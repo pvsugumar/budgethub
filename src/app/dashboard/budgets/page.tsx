@@ -6,6 +6,7 @@ import { CATEGORIES, categoryIcon } from '@/lib/categories';
 interface Budget {
   id: string;
   category: string;
+  type: string;
   limit: string;
   month: number;
   year: number;
@@ -22,6 +23,9 @@ const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
+
+const EXPENSE_CATEGORIES = CATEGORIES.filter((c) => c.name !== 'Income');
+const INCOME_CATEGORIES = CATEGORIES.filter((c) => c.name === 'Income');
 
 // Ring status: how much of the budget is remaining
 function ringColor(remaining: number, limit: number): string {
@@ -67,9 +71,9 @@ export default function BudgetsPage() {
   const [viewMonth, setViewMonth] = useState(today.getMonth() + 1);
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [form, setForm] = useState({
+    type: 'expense',
     category: '',
     limit: '',
-    month: today.getMonth() + 1,
   });
 
   const loadData = async (uid: string) => {
@@ -101,6 +105,7 @@ export default function BudgetsPage() {
       body: JSON.stringify({
         userId,
         category: form.category,
+        type: form.type,
         limit: form.limit,
         month: viewMonth,
         year: viewYear,
@@ -108,7 +113,7 @@ export default function BudgetsPage() {
     });
 
     if (res.ok) {
-      setForm({ category: '', limit: '', month: viewMonth });
+      setForm({ type: 'expense', category: '', limit: '' });
       setShowAddForm(false);
       loadData(userId);
     }
@@ -129,12 +134,12 @@ export default function BudgetsPage() {
     setViewYear(y);
   };
 
-  const spentByCategory = (category: string, month: number, year: number) => {
+  const spentByCategory = (category: string, type: string, month: number, year: number) => {
     return transactions
       .filter((t) => {
         const d = new Date(t.date);
         return (
-          t.type === 'expense' &&
+          t.type === type &&
           t.category === category &&
           d.getMonth() + 1 === month &&
           d.getFullYear() === year
@@ -143,25 +148,87 @@ export default function BudgetsPage() {
       .reduce((sum, t) => sum + Number(t.amount), 0);
   };
 
-  const monthIncome = transactions
-    .filter((t) => {
-      const d = new Date(t.date);
-      return t.type === 'income' && d.getMonth() + 1 === viewMonth && d.getFullYear() === viewYear;
-    })
-    .reduce((sum, t) => sum + Number(t.amount), 0);
-
   const monthBudgets = budgets.filter((b) => b.month === viewMonth && b.year === viewYear);
-  const totalBudgeted = monthBudgets.reduce((sum, b) => sum + Number(b.limit), 0);
-  const totalActual = monthBudgets.reduce(
-    (sum, b) => sum + spentByCategory(b.category, b.month, b.year),
+  const incomeBudgets = monthBudgets.filter((b) => b.type === 'income');
+  const expenseBudgets = monthBudgets.filter((b) => b.type !== 'income');
+
+  const totalIncomeActual = incomeBudgets.reduce(
+    (sum, b) => sum + spentByCategory(b.category, 'income', b.month, b.year),
+    0
+  );
+
+  const totalBudgeted = expenseBudgets.reduce((sum, b) => sum + Number(b.limit), 0);
+  const totalActual = expenseBudgets.reduce(
+    (sum, b) => sum + spentByCategory(b.category, 'expense', b.month, b.year),
     0
   );
   const totalRemaining = totalBudgeted - totalActual;
-  const leftForSavings = monthIncome - totalActual;
+  const leftForSavings = totalIncomeActual - totalActual;
 
   if (loading) {
     return <div className="text-center py-12 text-gray-600">Loading budgets...</div>;
   }
+
+  const availableCategories = form.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+
+  const renderBudgetTable = (rows: Budget[], type: string) => (
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="text-left text-gray-500 border-b border-gray-200">
+          <th className="py-3 px-6 font-medium">Name</th>
+          <th className="py-3 px-6 font-medium text-right">Budgeted</th>
+          <th className="py-3 px-6 font-medium text-right">Actual</th>
+          <th className="py-3 px-6 font-medium text-right">Remaining</th>
+          <th className="py-3 px-6 w-10"></th>
+          <th className="py-3 px-6 w-10"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((budget) => {
+          const spent = spentByCategory(budget.category, type, budget.month, budget.year);
+          const limit = Number(budget.limit);
+          const remaining = limit - spent;
+
+          return (
+            <tr key={budget.id} className="border-b border-gray-100 hover:bg-gray-50">
+              <td className="py-4 px-6">
+                <div className="flex items-center gap-3">
+                  <span className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm">
+                    {categoryIcon(budget.category)}
+                  </span>
+                  <span className="font-semibold text-gray-900 underline decoration-gray-300 underline-offset-2">
+                    {budget.category}
+                  </span>
+                </div>
+              </td>
+              <td className="py-4 px-6 text-right text-gray-700">${limit.toFixed(2)}</td>
+              <td className="py-4 px-6 text-right text-gray-700">${spent.toFixed(2)}</td>
+              <td
+                className={`py-4 px-6 text-right font-semibold ${
+                  type === 'income'
+                    ? remaining > 0 ? 'text-red-600' : 'text-green-600'
+                    : remaining < 0 ? 'text-red-600' : 'text-green-600'
+                }`}
+              >
+                {remaining < 0 ? '-' : ''}${Math.abs(remaining).toFixed(2)}
+              </td>
+              <td className="py-4 px-6">
+                <BudgetRing spent={spent} limit={limit} />
+              </td>
+              <td className="py-4 px-6 text-right">
+                <button
+                  onClick={() => handleDelete(budget.id)}
+                  className="text-red-500 hover:text-red-700 text-sm font-medium"
+                >
+                  Delete
+                </button>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
 
   return (
     <div>
@@ -187,7 +254,18 @@ export default function BudgetsPage() {
         <div className="card mb-8">
           <h2 className="text-xl font-bold mb-4">Create Budget for {MONTHS[viewMonth - 1]} {viewYear}</h2>
           <form className="space-y-4" onSubmit={handleSubmit}>
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                <select
+                  className="input"
+                  value={form.type}
+                  onChange={(e) => setForm({ ...form, type: e.target.value, category: '' })}
+                >
+                  <option value="expense">Expense</option>
+                  <option value="income">Income</option>
+                </select>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
                 <select
@@ -197,13 +275,13 @@ export default function BudgetsPage() {
                   required
                 >
                   <option value="" disabled>Select a category</option>
-                  {CATEGORIES.map((c) => (
+                  {availableCategories.map((c) => (
                     <option key={c.name} value={c.name}>{c.icon} {c.name}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Monthly Limit</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Monthly {form.type === 'income' ? 'Target' : 'Limit'}</label>
                 <input
                   type="number"
                   step="0.01"
@@ -227,84 +305,48 @@ export default function BudgetsPage() {
           <p className="text-lg">No budgets set for {MONTHS[viewMonth - 1]} {viewYear}. Create one to get started!</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
-            <span className="text-xs font-bold text-gray-500 tracking-wide">BUDGET CATEGORIES</span>
-          </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-gray-500 border-b border-gray-200">
-                <th className="py-3 px-6 font-medium">Name</th>
-                <th className="py-3 px-6 font-medium text-right">Budgeted</th>
-                <th className="py-3 px-6 font-medium text-right">Actual</th>
-                <th className="py-3 px-6 font-medium text-right">Remaining</th>
-                <th className="py-3 px-6 w-10"></th>
-                <th className="py-3 px-6 w-10"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {monthBudgets.map((budget) => {
-                const spent = spentByCategory(budget.category, budget.month, budget.year);
-                const limit = Number(budget.limit);
-                const remaining = limit - spent;
+        <div className="space-y-8">
+          {incomeBudgets.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
+                <span className="text-xs font-bold text-gray-500 tracking-wide">INCOME</span>
+              </div>
+              {renderBudgetTable(incomeBudgets, 'income')}
+            </div>
+          )}
 
-                return (
-                  <tr key={budget.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-3">
-                        <span className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm">
-                          {categoryIcon(budget.category)}
-                        </span>
-                        <span className="font-semibold text-gray-900 underline decoration-gray-300 underline-offset-2">
-                          {budget.category}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6 text-right text-gray-700">${limit.toFixed(2)}</td>
-                    <td className="py-4 px-6 text-right text-gray-700">${spent.toFixed(2)}</td>
-                    <td
-                      className={`py-4 px-6 text-right font-semibold ${
-                        remaining < 0 ? 'text-red-600' : 'text-green-600'
-                      }`}
-                    >
-                      {remaining < 0 ? '-' : ''}${Math.abs(remaining).toFixed(2)}
-                    </td>
-                    <td className="py-4 px-6">
-                      <BudgetRing spent={spent} limit={limit} />
-                    </td>
-                    <td className="py-4 px-6 text-right">
-                      <button
-                        onClick={() => handleDelete(budget.id)}
-                        className="text-red-500 hover:text-red-700 text-sm font-medium"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="bg-gray-50 border-t-2 border-gray-200 font-semibold">
-                <td className="py-4 px-6 text-gray-900">Spending Budget</td>
-                <td className="py-4 px-6 text-right text-gray-900">${totalBudgeted.toFixed(2)}</td>
-                <td className="py-4 px-6 text-right text-gray-900">${totalActual.toFixed(2)}</td>
-                <td className={`py-4 px-6 text-right ${totalRemaining < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {totalRemaining < 0 ? '-' : ''}${Math.abs(totalRemaining).toFixed(2)}
-                </td>
-                <td colSpan={2}></td>
-              </tr>
-              <tr className="bg-gray-50 border-t border-gray-200">
-                <td className="py-3 px-6 text-gray-700 flex items-center gap-2">
-                  <span>💵</span> Left For Savings
-                </td>
-                <td colSpan={3} className="py-3 px-6 text-right font-semibold text-gray-900">
-                  ${leftForSavings.toFixed(2)}
-                </td>
-                <td colSpan={2}></td>
-              </tr>
-            </tfoot>
-          </table>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
+              <span className="text-xs font-bold text-gray-500 tracking-wide">EXPENSE CATEGORIES</span>
+            </div>
+            {expenseBudgets.length > 0 ? (
+              renderBudgetTable(expenseBudgets, 'expense')
+            ) : (
+              <p className="text-center text-gray-500 py-8">No expense budgets yet.</p>
+            )}
+            <table className="w-full text-sm">
+              <tfoot>
+                <tr className="bg-gray-50 border-t-2 border-gray-200 font-semibold">
+                  <td className="py-4 px-6 text-gray-900 w-[35%]">Spending Budget</td>
+                  <td className="py-4 px-6 text-right text-gray-900">${totalBudgeted.toFixed(2)}</td>
+                  <td className="py-4 px-6 text-right text-gray-900">${totalActual.toFixed(2)}</td>
+                  <td className={`py-4 px-6 text-right ${totalRemaining < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    {totalRemaining < 0 ? '-' : ''}${Math.abs(totalRemaining).toFixed(2)}
+                  </td>
+                  <td colSpan={2}></td>
+                </tr>
+                <tr className="bg-gray-50 border-t border-gray-200">
+                  <td className="py-3 px-6 text-gray-700 flex items-center gap-2">
+                    <span>💵</span> Left For Savings
+                  </td>
+                  <td colSpan={3} className="py-3 px-6 text-right font-semibold text-gray-900">
+                    ${leftForSavings.toFixed(2)}
+                  </td>
+                  <td colSpan={2}></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
       )}
     </div>

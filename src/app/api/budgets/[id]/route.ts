@@ -32,12 +32,13 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { category, limit, spent, month, year } = await req.json();
+    const { category, type, limit, spent, month, year } = await req.json();
 
     const budget = await prisma.budget.update({
       where: { id: params.id },
       data: {
         category,
+        type,
         limit: limit ? parseFloat(limit) : undefined,
         spent: spent ? parseFloat(spent) : undefined,
         month,

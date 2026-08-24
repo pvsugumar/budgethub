@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId, category, limit, month, year } = await req.json();
+    const { userId, category, type, limit, month, year } = await req.json();
 
     if (!userId || !category || !limit) {
       return NextResponse.json(
@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
       data: {
         userId,
         category,
+        type: type === 'income' ? 'income' : 'expense',
         limit: parseFloat(limit),
         month: budgetMonth,
         year: budgetYear,
