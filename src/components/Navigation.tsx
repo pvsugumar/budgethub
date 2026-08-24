@@ -22,7 +22,6 @@ export default function Navigation() {
             <NavLink href="/dashboard/budgets" label="Budgets" />
             <NavLink href="/dashboard/goals" label="Goals" />
             <NavLink href="/dashboard/bills" label="Bills" />
-            <NavLink href="/dashboard/settings" label="Settings" />
           </div>
 
           <button
@@ -40,7 +39,6 @@ export default function Navigation() {
             <NavLink href="/dashboard/budgets" label="Budgets" />
             <NavLink href="/dashboard/goals" label="Goals" />
             <NavLink href="/dashboard/bills" label="Bills" />
-            <NavLink href="/dashboard/settings" label="Settings" />
           </div>
         )}
       </div>

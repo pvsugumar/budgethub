@@ -34,7 +34,6 @@ export default function Sidebar() {
     { href: '/dashboard/budgets', label: 'Budgets', icon: '🎯' },
     { href: '/dashboard/goals', label: 'Goals', icon: '🚀' },
     { href: '/dashboard/bills', label: 'Bills', icon: '📋' },
-    { href: '/dashboard/settings', label: 'Settings', icon: '⚙️' },
   ];
 
   return (

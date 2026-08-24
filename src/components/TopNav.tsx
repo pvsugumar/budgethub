@@ -66,9 +66,6 @@ export default function TopNav() {
           </div>
 
           <div className="flex items-center gap-5 text-sm text-gray-300">
-            <Link href="/dashboard/settings" className="hidden sm:inline hover:text-white transition-colors">
-              Settings
-            </Link>
             <div className="relative" ref={menuRef}>
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
@@ -81,13 +78,6 @@ export default function TopNav() {
               </button>
               {menuOpen && (
                 <div className="absolute right-0 mt-2 w-44 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 overflow-hidden">
-                  <Link
-                    href="/dashboard/settings"
-                    className="block px-4 py-2 text-sm hover:bg-gray-50"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    Profile & Settings
-                  </Link>
                   <button
                     onClick={handleLogout}
                     className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
