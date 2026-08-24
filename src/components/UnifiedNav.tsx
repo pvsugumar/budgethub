@@ -134,44 +134,47 @@ export default function UnifiedNav() {
           >
             {navigationItems.map((item) => {
               const active = isSubmenuActive(item);
-              const hasSubmenu = item.submenu && item.submenu.length > 0;
+              const hasSubmenu = item.submenu !== undefined && item.submenu.length > 0;
+              const primaryHref = hasSubmenu ? item.submenu![0].href : item.href;
 
               return (
                 <div key={item.href} className="relative" ref={submenuRef}>
-                  <button
-                    onClick={() => {
-                      if (hasSubmenu) {
+                  <Link
+                    href={primaryHref}
+                    onClick={(e) => {
+                      // On mobile, prevent default and toggle submenu instead
+                      if (window.innerWidth < 768 && hasSubmenu) {
+                        e.preventDefault();
                         setOpenSubmenu(openSubmenu === item.href ? null : item.href);
                       } else {
-                        router.push(item.href);
                         setMobileOpen(false);
                       }
                     }}
-                    className={`w-full md:w-auto px-4 py-3 md:py-2 text-sm font-medium flex items-center justify-between md:justify-center gap-2 transition-all duration-150 relative group ${
+                    className={`w-full md:w-auto px-4 py-3 md:py-2 text-sm font-medium flex items-center justify-between md:justify-center gap-2 transition-all duration-150 relative group block ${
                       active
                         ? 'text-white'
                         : 'text-gray-300 hover:text-white'
                     }`}
-                  >
-                    {item.label}
-                    {hasSubmenu && (
-                      <span
-                        className={`text-xs transition-transform duration-200 ${
-                          openSubmenu === item.href ? 'rotate-180' : ''
-                        }`}
-                      >
-                        ▼
-                      </span>
-                    )}
+                    >
+                      {item.label}
+                      {hasSubmenu && (
+                        <span
+                          className={`text-xs transition-transform duration-200 ${
+                            openSubmenu === item.href ? 'rotate-180' : ''
+                          }`}
+                        >
+                          ▼
+                        </span>
+                      )}
 
-                    {/* Desktop underline */}
-                    {active && !hasSubmenu && (
-                      <div className="hidden md:block absolute bottom-0 left-4 right-4 h-0.5 bg-emerald-400 rounded-full"></div>
-                    )}
+                      {/* Desktop underline */}
+                      {active && (
+                        <div className="hidden md:block absolute bottom-0 left-4 right-4 h-0.5 bg-emerald-400 rounded-full"></div>
+                      )}
 
-                    {/* Hover background */}
-                    <div className="hidden md:block absolute inset-0 rounded-lg bg-white opacity-0 group-hover:opacity-8 transition-opacity duration-150 -z-10"></div>
-                  </button>
+                      {/* Hover background */}
+                      <div className="hidden md:block absolute inset-0 rounded-lg bg-white opacity-0 group-hover:opacity-8 transition-opacity duration-150 -z-10"></div>
+                    </Link>
 
                   {/* Submenu - Desktop Dropdown */}
                   {hasSubmenu && item.submenu && (
