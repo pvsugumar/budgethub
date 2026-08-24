@@ -277,17 +277,19 @@ export default function TransactionsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="space-y-2">
+      <div className="space-y-1">
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-4xl font-bold text-gray-900">Transactions</h1>
-            <p className="text-gray-600 mt-1">Manage, search, and organize your financial activity.</p>
+            <p className="text-gray-600 mt-0.5">Manage, search, and organize your financial activity.</p>
           </div>
           <div>
           </div>
         </div>
       </div>
 
+      {/* Smart Search Bar + Filter Bar - Sticky */}
+      <div className="sticky top-14 z-20 bg-white pb-3 space-y-3 rounded-b-xl shadow-md">
       {/* Smart Search Bar */}
       <div className="relative">
         <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -295,7 +297,7 @@ export default function TransactionsPage() {
         </svg>
         <input
           type="text"
-          placeholder="Search merchants, descriptions, categories, notes, or amounts..."
+          placeholder="Search transactions (Uber, Food, >100, <50)..."
           className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary bg-white"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -310,8 +312,8 @@ export default function TransactionsPage() {
         )}
       </div>
 
-      {/* Sticky Filter Bar */}
-      <div className="sticky top-0 z-10 bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex flex-wrap gap-2 items-center">
+      {/* Filter Bar */}
+      <div className="flex flex-wrap gap-2 items-center px-4 pt-2 border-t border-gray-100">
         {/* Type Filter Pill */}
         <div className="relative">
           <button
@@ -516,6 +518,80 @@ export default function TransactionsPage() {
           )}
         </div>
       </div>
+      </div>
+
+      {/* Active Filter Chips */}
+      {hasActiveFilters && (
+        <div className="flex flex-wrap items-center gap-2 -mt-1">
+          {filter !== 'all' && (
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-100 text-red-700 text-sm font-medium">
+              <span>{filter === 'expense' ? '💸 Expense' : '💰 Income'}</span>
+              <button
+                onClick={() => setFilter('all')}
+                className="hover:text-red-900 transition font-bold"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+          {dateRangeOption !== 'all' && (
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-medium">
+              <span>📅 {DATE_RANGE_OPTIONS.find((o) => o.value === dateRangeOption)?.label}</span>
+              <button
+                onClick={() => setDateRangeOption('all')}
+                className="hover:text-blue-900 transition font-bold"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+          {categoryFilter.length > 0 && categoryFilter.map((cat) => (
+            <div key={cat} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-sm font-medium">
+              <span>{categoryIcon(cat)} {cat}</span>
+              <button
+                onClick={() => setCategoryFilter(categoryFilter.filter(c => c !== cat))}
+                className="hover:text-purple-900 transition font-bold"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          {accountFilter !== 'all' && (
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-100 text-orange-700 text-sm font-medium">
+              <span>🏦 {accounts.find(a => a.id === accountFilter)?.name || 'Account'}</span>
+              <button
+                onClick={() => setAccountFilter('all')}
+                className="hover:text-orange-900 transition font-bold"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+          <button
+            onClick={() => {
+              setFilter('all');
+              setCategoryFilter([]);
+              setAccountFilter('all');
+              setDateRangeOption('all');
+              setSearch('');
+            }}
+            className="ml-auto text-sm text-primary hover:text-opacity-80 font-medium"
+          >
+            Clear All
+          </button>
+        </div>
+      )}
+
+      {/* Search Results Count */}
+      {(hasActiveFilters || search) && (
+        <div className="text-sm text-gray-600 font-medium">
+          {filteredTransactions.length === 0
+            ? 'No matching transactions'
+            : filteredTransactions.length === 1
+            ? '1 Transaction'
+            : `${filteredTransactions.length} Transactions`}
+        </div>
+      )}
 
       {/* Transactions Table */}
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
@@ -692,9 +768,12 @@ export default function TransactionsPage() {
                         )}
                       </td>
                       <td className={`px-6 py-4 text-right font-semibold whitespace-nowrap ${
-                        t.type === 'income' ? 'text-green-600' : 'text-red-600'
+                        t.type === 'income' ? 'text-green-600' : t.type === 'expense' ? 'text-red-600' : 'text-gray-600'
                       }`}>
-                        <span>${formatAmount(t.amount)}<span className="text-xs align-super">{t.type === 'income' ? '▲' : '▼'}</span></span>
+                        <span className="flex items-center justify-end gap-1">
+                          <span className="text-lg">{t.type === 'income' ? '▲' : t.type === 'expense' ? '▼' : '↔'}</span>
+                          <span>{t.type === 'income' ? '+' : t.type === 'expense' ? '-' : ''}${formatAmount(t.amount)}</span>
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
