@@ -48,7 +48,7 @@ body {
   }
 
   .btn-primary {
-    @apply bg-gradient-to-r from-slate-900 to-slate-800 text-white hover:from-slate-800 hover:to-slate-700 shadow-md border border-green-500 hover:border-green-400;
+    @apply bg-emerald-600 text-white hover:bg-emerald-700 shadow-md border border-emerald-600 hover:border-emerald-700;
   }
 
   .btn-secondary {
