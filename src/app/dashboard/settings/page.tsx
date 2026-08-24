@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import BankLink from '@/components/BankLink';
+import { CATEGORIES } from '@/lib/categories';
 
 type SettingsTab = 'profile' | 'categories' | 'accounts';
 
@@ -36,7 +37,6 @@ export default function SettingsPage() {
     pushBudgets: true,
   });
   const [passwordForm, setPasswordForm] = useState({
-    currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
@@ -140,13 +140,12 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           userId,
-          currentPassword: passwordForm.currentPassword,
           newPassword: passwordForm.newPassword,
         }),
       });
       if (res.ok) {
         alert('✅ Password changed!');
-        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setPasswordForm({ newPassword: '', confirmPassword: '' });
       } else {
         alert('❌ Failed to change password');
       }
@@ -376,7 +375,7 @@ export default function SettingsPage() {
                   type="button"
                   onClick={handleSaveProfile}
                   disabled={saving}
-                  className="btn-primary"
+                  className="px-6 py-3 bg-primary text-white font-medium rounded-lg hover:opacity-90 transition disabled:opacity-50"
                 >
                   {saving ? 'Saving...' : 'Save Changes'}
                 </button>
@@ -386,18 +385,6 @@ export default function SettingsPage() {
               <div className="mt-12 pt-8 border-t border-gray-200">
                 <h3 className="text-lg font-bold mb-6 text-gray-900">Change Password</h3>
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Current Password
-                    </label>
-                    <input
-                      type="password"
-                      name="currentPassword"
-                      value={passwordForm.currentPassword}
-                      onChange={handlePasswordChange}
-                      className="input"
-                    />
-                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       New Password
@@ -426,7 +413,7 @@ export default function SettingsPage() {
                     type="button"
                     onClick={handleChangePassword}
                     disabled={saving}
-                    className="btn-primary"
+                    className="px-6 py-3 bg-primary text-white font-medium rounded-lg hover:opacity-90 transition disabled:opacity-50"
                   >
                     {saving ? 'Updating...' : 'Update Password'}
                   </button>
@@ -552,7 +539,7 @@ export default function SettingsPage() {
                   type="button"
                   onClick={handleSaveProfile}
                   disabled={saving}
-                  className="btn-primary mt-6"
+                  className="px-6 py-3 bg-primary text-white font-medium rounded-lg hover:opacity-90 transition disabled:opacity-50 mt-6"
                 >
                   {saving ? 'Saving...' : 'Save Preferences'}
                 </button>
@@ -584,8 +571,18 @@ export default function SettingsPage() {
         {activeTab === 'categories' && (
           <div>
             <h1 className="text-3xl font-bold mb-8 text-gray-900">🏷️ Categories</h1>
-            <div className="card max-w-2xl">
-              <p className="text-gray-600">Category management coming soon</p>
+            <div className="card">
+              <div className="grid grid-cols-2 gap-4">
+                {CATEGORIES.map((category) => (
+                  <div
+                    key={category.name}
+                    className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+                  >
+                    <span className="text-2xl mr-3">{category.icon}</span>
+                    <span className="font-medium text-gray-800">{category.name}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -594,7 +591,36 @@ export default function SettingsPage() {
         {activeTab === 'accounts' && (
           <div>
             <h1 className="text-3xl font-bold mb-8 text-gray-900">🏦 Accounts</h1>
-            <div className="card max-w-2xl">
+            
+            {/* Connected Accounts Table */}
+            <div className="card mb-8">
+              <h3 className="text-lg font-bold mb-4 text-gray-900">Connected Accounts</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-gray-500 border-b border-gray-200">
+                      <th className="py-3 px-4 font-medium">Bank</th>
+                      <th className="py-3 px-4 font-medium">Status</th>
+                      <th className="py-3 px-4 font-medium">Last Synced</th>
+                      <th className="py-3 px-4 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-4 px-4 font-medium text-gray-900">No accounts connected</td>
+                      <td className="py-4 px-4 text-gray-500">—</td>
+                      <td className="py-4 px-4 text-gray-500">—</td>
+                      <td className="py-4 px-4 text-gray-500">—</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-sm text-gray-600 mt-4">Connect a bank account to automatically sync transactions and see real-time balances.</p>
+            </div>
+
+            {/* Link New Account */}
+            <div className="card">
+              <h3 className="text-lg font-bold mb-4 text-gray-900">Link New Account</h3>
               {userId && <BankLink userId={userId} onSuccess={() => alert('✅ Bank account linked!')} />}
             </div>
           </div>
