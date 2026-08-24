@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { CATEGORIES, categoryIcon } from '@/lib/categories';
+import { CATEGORIES } from '@/lib/categories';
 import { getMerchantInitials } from '@/lib/merchants';
 
 interface Transaction {
@@ -44,6 +44,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState('');
   const [greeting, setGreeting] = useState('');
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     // Get user name from localStorage
@@ -156,6 +157,23 @@ export default function DashboardPage() {
 
   const upcomingBillsText = upcomingBillsCount === 0 ? '0 bills due' : `${upcomingBillsCount} bill${upcomingBillsCount > 1 ? 's' : ''} due`;
 
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const userId = localStorage.getItem('userId');
+      if (userId) {
+        const res = await fetch(`/api/bank-accounts?userId=${userId}`);
+        if (res.ok) {
+          setBankAccounts(await res.json());
+        }
+      }
+    } catch (error) {
+      console.error('Failed to sync accounts:', error);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-8 text-center text-gray-600">Loading dashboard...</div>
@@ -259,7 +277,7 @@ export default function DashboardPage() {
                         <p className="text-xs text-gray-500">{tx.category} • {new Date(tx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
                       </div>
                     </div>
-                    <p className={`font-semibold text-sm ${tx.type === 'income' ? 'text-green-600' : 'text-gray-900'}`}>
+                    <p className={`font-semibold text-sm ${tx.type === 'income' ? 'text-emerald-600' : 'text-red-600'}`}>
                       {tx.type === 'income' ? '+' : '-'}${Number(tx.amount).toFixed(2)}
                     </p>
                   </div>
@@ -274,44 +292,48 @@ export default function DashboardPage() {
 
           {/* Budget Progress */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Budget Progress</h2>
-            {categorySpending.length > 0 ? (
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-900">Budget Progress</h2>
+              <a href="/dashboard/budgets" className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">
+                View All →
+              </a>
+            </div>
+            {budgets.length > 0 ? (
               <div className="space-y-3">
-                {categorySpending.slice(0, 5).map((cat) => {
-                  const percentUsed = cat.limit > 0 ? (cat.spent / cat.limit) * 100 : 0;
+                {(() => {
+                  const totalBudget = budgets.reduce((sum, b) => sum + Number(b.limit), 0);
+                  const totalSpent = budgets.reduce((sum, b) => sum + Number(b.spent), 0);
+                  const percentUsed = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
                   let statusColor = 'bg-emerald-500';
-                  let statusLabel = '✅';
+                  let statusLabel = '✅ On Track';
                   if (percentUsed >= 100) {
                     statusColor = 'bg-red-500';
-                    statusLabel = '🚨';
+                    statusLabel = '🚨 Over Budget';
                   } else if (percentUsed >= 80) {
                     statusColor = 'bg-amber-500';
-                    statusLabel = '⚠️';
+                    statusLabel = '⚠️ Near Limit';
                   }
                   return (
-                    <div key={cat.name}>
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">{categoryIcon(cat.name)}</span>
-                          <span className="font-medium text-gray-900 text-sm">{cat.name}</span>
-                          <span className="text-xs text-gray-500">{statusLabel}</span>
-                        </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="font-medium text-gray-900 text-sm">{statusLabel}</span>
                         <span className="text-sm font-semibold text-gray-600">
-                          ${cat.spent.toFixed(0)}{cat.limit > 0 ? ` / $${cat.limit.toFixed(0)}` : ''}
+                          ${totalSpent.toFixed(0)} / ${totalBudget.toFixed(0)}
                         </span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                      <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
                         <div
-                          className={`${statusColor} h-2 rounded-full transition-all`}
+                          className={`${statusColor} h-2.5 rounded-full transition-all`}
                           style={{ width: `${Math.min(percentUsed, 100)}%` }}
                         ></div>
                       </div>
+                      <p className="text-xs text-gray-500 mt-2">{percentUsed.toFixed(0)}% of total budget spent</p>
                     </div>
                   );
-                })}
+                })()}
               </div>
             ) : (
-              <p className="text-gray-500 text-sm text-center py-4">No budget data yet</p>
+              <p className="text-gray-500 text-sm text-center py-4">No budgets created yet</p>
             )}
           </div>
         </div>
@@ -343,7 +365,17 @@ export default function DashboardPage() {
 
           {/* Connected Accounts Summary */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
-            <h2 className="text-lg font-bold text-gray-900 mb-3">Connected Accounts</h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-bold text-gray-900">Connected Accounts</h2>
+              <button
+                onClick={handleSync}
+                disabled={syncing}
+                className="p-2 rounded-lg hover:bg-gray-100 transition text-gray-600 hover:text-gray-900 disabled:opacity-50"
+                title="Sync accounts"
+              >
+                <span className={`text-lg ${syncing ? 'animate-spin' : ''}`}>🔄</span>
+              </button>
+            </div>
             {bankAccounts.length > 0 ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between py-1.5 text-sm">
@@ -399,10 +431,11 @@ function KPICard({
 }) {
   const bgClass = highlight ? 'bg-emerald-50' : 'bg-white';
   const borderClass = highlight ? 'border-2 border-emerald-200' : 'border border-gray-200';
+  const isNegative = parseFloat(amount) < 0;
   const amountColorClass = {
     income: 'text-emerald-600',
     expense: 'text-red-600',
-    balance: highlight ? 'text-emerald-700' : 'text-gray-700',
+    balance: isNegative ? 'text-red-600' : (highlight ? 'text-emerald-700' : 'text-gray-700'),
   }[type];
 
   const changeColorClass = change && change > 0 ? 'text-emerald-600' : change && change < 0 ? 'text-red-600' : 'text-gray-600';

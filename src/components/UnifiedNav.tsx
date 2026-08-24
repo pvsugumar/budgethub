@@ -254,7 +254,6 @@ export default function UnifiedNav() {
                 <span className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">
                   {initial}
                 </span>
-                <span className="text-sm font-medium">{userName.split(' ')[0]}</span>
               </button>
 
               {menuOpen && (
@@ -285,7 +284,6 @@ export default function UnifiedNav() {
                 <span className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold">
                   {initial}
                 </span>
-                <span className="text-sm font-medium">{userName}</span>
               </div>
               <button
                 onClick={handleLogout}
