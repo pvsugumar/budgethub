@@ -1,6 +1,6 @@
 'use client';
 
-import TopNav from '@/components/TopNav';
+import UnifiedNav from '@/components/UnifiedNav';
 
 export default function DashboardLayout({
   children,
@@ -9,7 +9,7 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="min-h-screen bg-gray-50">
-      <TopNav />
+      <UnifiedNav />
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8">
         {children}
       </main>
