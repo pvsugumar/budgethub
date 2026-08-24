@@ -92,36 +92,26 @@ function MerchantAvatar({ merchantName }: { merchantName: string | null }) {
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filter, setFilter] = useState('all');
-  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [accountFilter, setAccountFilter] = useState('all');
   const [dateRangeOption, setDateRangeOption] = useState('all');
   const [dateDropdownOpen, setDateDropdownOpen] = useState(false);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [accountDropdownOpen, setAccountDropdownOpen] = useState(false);
-  const [actionMenuId, setActionMenuId] = useState<string | null>(null);
   const [categorySearch, setCategorySearch] = useState('');
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const dateDropdownRef = useRef<HTMLDivElement>(null);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const accountDropdownRef = useRef<HTMLDivElement>(null);
-  const actionMenuRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ amount: '', category: '', description: '', date: '', type: 'expense' });
-  const [showAddForm, setShowAddForm] = useState(false);
   const [inlineEditField, setInlineEditField] = useState<string | null>(null); // "${id}-merchant" or "${id}-category"
   const [inlineEditValue, setInlineEditValue] = useState('');
   const [inlineCategoryDropdownOpen, setInlineCategoryDropdownOpen] = useState(false);
   const inlineCategoryDropdownRef = useRef<HTMLDivElement>(null);
-  const [form, setForm] = useState({
-    type: 'expense',
-    amount: '',
-    category: '',
-    date: new Date().toISOString().split('T')[0],
-    description: '',
-  });
 
   const loadTransactions = async (uid: string) => {
     try {
@@ -171,9 +161,6 @@ export default function TransactionsPage() {
       if (accountDropdownRef.current && !accountDropdownRef.current.contains(e.target as Node)) {
         setAccountDropdownOpen(false);
       }
-      if (actionMenuRef.current && !actionMenuRef.current.contains(e.target as Node)) {
-        setActionMenuId(null);
-      }
       if (inlineCategoryDropdownRef.current && !inlineCategoryDropdownRef.current.contains(e.target as Node)) {
         setInlineCategoryDropdownOpen(false);
       }
@@ -181,29 +168,6 @@ export default function TransactionsPage() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userId || !form.amount || !form.category) return;
-
-    const res = await fetch('/api/transactions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, ...form }),
-    });
-
-    if (res.ok) {
-      setForm({
-        type: 'expense',
-        amount: '',
-        category: '',
-        date: new Date().toISOString().split('T')[0],
-        description: '',
-      });
-      setShowAddForm(false);
-      if (userId) loadTransactions(userId);
-    }
-  };
 
   const categories = useMemo(
     () => Array.from(new Set(transactions.map((t) => t.category))).sort(),
@@ -214,7 +178,7 @@ export default function TransactionsPage() {
     const d = new Date(t.date);
     const { from, to } = getDateRange(dateRangeOption);
     if (filter !== 'all' && t.type !== filter) return false;
-    if (categoryFilter !== 'all' && t.category !== categoryFilter) return false;
+    if (categoryFilter.length > 0 && !categoryFilter.includes(t.category)) return false;
     if (accountFilter !== 'all' && t.accountId !== accountFilter) return false;
     if (from && d < from) return false;
     if (to && d > to) return false;
@@ -250,7 +214,6 @@ export default function TransactionsPage() {
     });
     if (res.ok && userId) {
       setEditingId(null);
-      setActionMenuId(null);
       loadTransactions(userId);
     }
   };
@@ -259,7 +222,6 @@ export default function TransactionsPage() {
     if (!confirm('Delete this transaction?')) return;
     const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
     if (res.ok && userId) {
-      setActionMenuId(null);
       loadTransactions(userId);
     }
   };
@@ -310,7 +272,7 @@ export default function TransactionsPage() {
     return num.toFixed(2);
   };
 
-  const hasActiveFilters = filter !== 'all' || categoryFilter !== 'all' || accountFilter !== 'all' || dateRangeOption !== 'all' || search;
+  const hasActiveFilters = filter !== 'all' || categoryFilter.length > 0 || accountFilter !== 'all' || dateRangeOption !== 'all' || search;
 
   return (
     <div className="space-y-6">
@@ -321,101 +283,10 @@ export default function TransactionsPage() {
             <h1 className="text-4xl font-bold text-gray-900">Transactions</h1>
             <p className="text-gray-600 mt-1">Manage, search, and organize your financial activity.</p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => alert('Export feature coming soon')}
-              className="px-4 py-2 text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition font-medium text-sm"
-            >
-              Export
-            </button>
-            <button
-              onClick={() => setShowAddForm(!showAddForm)}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:opacity-90 transition font-medium text-sm"
-            >
-              + Add Transaction
-            </button>
+          <div>
           </div>
         </div>
       </div>
-
-      {/* Add Transaction Form */}
-      {showAddForm && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Add New Transaction</h2>
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
-                <select
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={form.type}
-                  onChange={(e) => setForm({ ...form, type: e.target.value })}
-                >
-                  <option value="expense">Expense</option>
-                  <option value="income">Income</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Amount</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="0.00"
-                  value={form.amount}
-                  onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                <select
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  required
-                >
-                  <option value="" disabled>Select a category</option>
-                  {CATEGORIES.map((c) => (
-                    <option key={c.name} value={c.name}>{c.icon} {c.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
-                <input
-                  type="date"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  value={form.date}
-                  onChange={(e) => setForm({ ...form, date: e.target.value })}
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-              <input
-                type="text"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="Merchant or description (optional)"
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-              />
-            </div>
-            <div className="flex gap-2">
-              <button type="submit" className="px-4 py-2 bg-primary text-white rounded-lg hover:opacity-90 transition font-medium text-sm">
-                Add Transaction
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowAddForm(false)}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition font-medium text-sm"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
 
       {/* Smart Search Bar */}
       <div className="relative">
@@ -547,13 +418,13 @@ export default function TransactionsPage() {
           <button
             onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
             className={`px-4 py-2 rounded-full font-medium text-sm transition flex items-center gap-2 ${
-              categoryFilter === 'all'
+              categoryFilter.length === 0
                 ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
             }`}
           >
-            <span>{categoryFilter === 'all' ? '🏷️' : categoryIcon(categoryFilter)}</span>
-            <span>{categoryFilter === 'all' ? 'All Categories' : categoryFilter}</span>
+            <span>🏷️</span>
+            <span>{categoryFilter.length === 0 ? 'All Categories' : `${categoryFilter.length} Selected`}</span>
             <span>▼</span>
           </button>
           {categoryDropdownOpen && (
@@ -572,12 +443,18 @@ export default function TransactionsPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setCategoryFilter('all');
+                    setCategoryFilter([]);
                     setCategoryDropdownOpen(false);
                     setCategorySearch('');
                   }}
                   className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 text-left"
                 >
+                  <input
+                    type="checkbox"
+                    checked={categoryFilter.length === 0}
+                    onChange={() => {}}
+                    className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-2 focus:ring-primary"
+                  />
                   <span className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">🏷️</span>
                   <span className="font-medium text-gray-700">All Categories</span>
                 </button>
@@ -588,19 +465,26 @@ export default function TransactionsPage() {
                       key={c}
                       type="button"
                       onClick={() => {
-                        setCategoryFilter(c);
-                        setCategoryDropdownOpen(false);
-                        setCategorySearch('');
+                        setCategoryFilter(
+                          categoryFilter.includes(c)
+                            ? categoryFilter.filter(cat => cat !== c)
+                            : [...categoryFilter, c]
+                        );
                       }}
                       className={`w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 text-left ${
-                        categoryFilter === c ? 'bg-blue-50' : ''
+                        categoryFilter.includes(c) ? 'bg-blue-50' : ''
                       }`}
                     >
+                      <input
+                        type="checkbox"
+                        checked={categoryFilter.includes(c)}
+                        onChange={() => {}}
+                        className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-2 focus:ring-primary"
+                      />
                       <span className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center font-lg">
                         {categoryIcon(c)}
                       </span>
                       <span className="font-medium text-gray-700">{c}</span>
-                      {categoryFilter === c && <span className="ml-auto text-primary font-bold">✓</span>}
                     </button>
                   ))}
               </div>
@@ -608,21 +492,29 @@ export default function TransactionsPage() {
           )}
         </div>
 
-        {/* Clear Filters Button */}
-        {hasActiveFilters && (
+        {/* Right side: Export and Clear Filters */}
+        <div className="ml-auto flex items-center gap-3">
           <button
-            onClick={() => {
-              setFilter('all');
-              setCategoryFilter('all');
-              setAccountFilter('all');
-              setDateRangeOption('all');
-              setSearch('');
-            }}
-            className="ml-auto text-sm text-primary hover:text-opacity-80 font-medium"
+            onClick={() => alert('Export feature coming soon')}
+            className="px-4 py-2 text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition font-medium text-sm"
           >
-            Clear all filters
+            📥 Export
           </button>
-        )}
+          {hasActiveFilters && (
+            <button
+              onClick={() => {
+                setFilter('all');
+                setCategoryFilter([]);
+                setAccountFilter('all');
+                setDateRangeOption('all');
+                setSearch('');
+              }}
+              className="text-sm text-primary hover:text-opacity-80 font-medium"
+            >
+              Clear all filters
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Transactions Table */}
@@ -802,51 +694,31 @@ export default function TransactionsPage() {
                       <td className={`px-6 py-4 text-right font-semibold whitespace-nowrap ${
                         t.type === 'income' ? 'text-green-600' : 'text-red-600'
                       }`}>
-                        <span className="flex items-center justify-end gap-1">
-                          <span>${formatAmount(t.amount)}{t.type === 'income' ? '▲' : '▼'}</span>
-                        </span>
+                        <span>${formatAmount(t.amount)}<span className="text-xs align-super">{t.type === 'income' ? '▲' : '▼'}</span></span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <div className="relative" ref={actionMenuId === t.id ? actionMenuRef : undefined}>
+                        <div className="flex items-center justify-end gap-2">
                           <button
-                            onClick={() => setActionMenuId(actionMenuId === t.id ? null : t.id)}
-                            className="p-2 hover:bg-gray-100 rounded-lg transition"
+                            onClick={() => startEdit(t)}
+                            className="p-2 hover:bg-blue-100 rounded-lg transition text-blue-600 font-semibold"
+                            title="Edit"
                           >
-                            ⋮
+                            ✎
                           </button>
-                          {actionMenuId === t.id && (
-                            <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-20">
-                              <button
-                                onClick={() => startEdit(t)}
-                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                              >
-                                Edit Transaction
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setForm({
-                                    type: t.type,
-                                    amount: t.amount,
-                                    category: t.category,
-                                    date: t.date.split('T')[0],
-                                    description: t.description || '',
-                                  });
-                                  setShowAddForm(true);
-                                  setActionMenuId(null);
-                                }}
-                                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                              >
-                                Duplicate Transaction
-                              </button>
-                              <div className="border-t border-gray-100 my-1"></div>
-                              <button
-                                onClick={() => handleDelete(t.id)}
-                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          )}
+                          <button
+                            onClick={() => {}}
+                            className="p-2 hover:bg-gray-100 rounded-lg transition text-gray-600 font-semibold"
+                            title="Ignore"
+                          >
+                            ⊘
+                          </button>
+                          <button
+                            onClick={() => handleDelete(t.id)}
+                            className="p-2 hover:bg-red-100 rounded-lg transition text-red-600 font-semibold"
+                            title="Delete"
+                          >
+                            🗑
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -857,45 +729,6 @@ export default function TransactionsPage() {
           </div>
         )}
       </div>
-
-      {/* Summary Footer */}
-      {filteredTransactions.length > 0 && (
-        <div className="flex justify-end gap-8 text-sm">
-          <div>
-            <p className="text-gray-600">Total Expenses</p>
-            <p className="text-2xl font-bold text-red-600">
-              ${filteredTransactions
-                .filter((t) => t.type === 'expense')
-                .reduce((sum, t) => sum + Number(t.amount), 0)
-                .toFixed(2)}
-            </p>
-          </div>
-          <div>
-            <p className="text-gray-600">Total Income</p>
-            <p className="text-2xl font-bold text-green-600">
-              ${filteredTransactions
-                .filter((t) => t.type === 'income')
-                .reduce((sum, t) => sum + Number(t.amount), 0)
-                .toFixed(2)}
-            </p>
-          </div>
-          <div>
-            <p className="text-gray-600">Net</p>
-            <p className={`text-2xl font-bold ${
-              filteredTransactions.reduce((sum, t) => sum + (t.type === 'income' ? Number(t.amount) : -Number(t.amount)), 0) >= 0
-                ? 'text-green-600'
-                : 'text-red-600'
-            }`}>
-              ${(
-                filteredTransactions.reduce(
-                  (sum, t) => sum + (t.type === 'income' ? Number(t.amount) : -Number(t.amount)),
-                  0
-                )
-              ).toFixed(2)}
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
